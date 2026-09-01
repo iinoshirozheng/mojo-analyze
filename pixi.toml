@@ -1,0 +1,16 @@
+[workspace]
+authors = ["Ray <iinoshirozheng@gmail.com>"]
+channels = ["https://conda.modular.com/max", "conda-forge"]
+name = "mojo-analyze"
+platforms = ["osx-arm64", "linux-64", "linux-aarch64"]
+version = "0.1.0"
+
+[tasks]
+build = "mkdir -p dist && mojo build --fp-mode contract=off benchmarks/mandelbrot/mandelbrot.mojo -o dist/mandelbrot-mojo && mojo build benchmarks/sieve/sieve.mojo -o dist/sieve-mojo && mojo build benchmarks/wordfreq/wordfreq.mojo -o dist/wordfreq-mojo"
+prepare-corpus = "python benchmarks/wordfreq/prepare_corpus.py"
+bench = "python scripts/bench.py"
+
+[dependencies]
+mojo = ">=1.0.0,<2"
+python = ">=3.14.7,<3.15"
+numpy = ">=2.5.2,<3"
