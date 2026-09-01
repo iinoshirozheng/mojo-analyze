@@ -97,9 +97,9 @@ Read this before citing a number from this doc elsewhere:
 ![Mojo vs. Python vs. NumPy — mean wall-clock time, lower is better, three panels one per category](results/chart_absolute.png)
 
 Error bars are ±1 stdev across the 7 measured trials. Bar color is by *role*
-across all charts in this doc, not by language name: blue is always Mojo,
-orange is always the optimized C-backed library alternative (NumPy for A/B,
-`Counter` for C), aqua is always the naive/pure-Python implementation.
+across all charts in this doc, not by language name: orange is always Mojo,
+blue is always the optimized C-backed library alternative (NumPy for A/B,
+`Counter` for C), aqua/green is always the naive/pure-Python implementation.
 
 ### A — Mandelbrot (SIMD-friendly)
 

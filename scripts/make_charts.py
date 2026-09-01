@@ -1,6 +1,7 @@
 """Renders the benchmark charts embedded in ANALYSIS.md / README.md from
 results/results.json. Palette and mark specs follow the dataviz skill: fixed
-categorical hues assigned by *role* (never by rank), hairline recessive grid,
+categorical hues assigned by *role* (never by rank) — orange=Mojo,
+blue=optimized library, aqua/green=naive Python — hairline recessive grid,
 no borders on marks, direct value labels as the contrast-relief channel for
 the aqua slot (which sits under 3:1 against the light surface).
 
@@ -19,10 +20,14 @@ RESULTS = json.loads((ROOT / "results/results.json").read_text())
 OUT = ROOT / "results"
 
 # Categorical palette (dataviz skill default, slots 1-3 — validated all-pairs,
-# both CVD and normal-vision floors, for exactly 3 series).
-BLUE = "#2a78d6"    # role: Mojo (compiled, throughout)
-ORANGE = "#eb6834"  # role: optimized C-backed library alternative (NumPy / Counter)
-AQUA = "#1baf7a"    # role: naive/pure Python
+# both CVD and normal-vision floors, for exactly 3 series). Roles are assigned
+# to hold within this pre-validated triple — swapping in a "purer" green
+# (slot 6, #008300) alongside orange was tried and FAILS CVD separation hard
+# (protan ΔE 3.2, well under the floor of 6) — green/orange is a classic
+# confusion pair, so aqua stays the naive-Python green.
+MOJO = "#eb6834"      # orange — role: Mojo (compiled, throughout)
+OPT_LIB = "#2a78d6"   # blue — role: optimized C-backed library alt (NumPy / Counter)
+NAIVE_PY = "#1baf7a"  # aqua/green — role: naive/pure Python
 
 TEXT_PRIMARY = "#0b0b0b"
 TEXT_SECONDARY = "#52514e"
@@ -49,9 +54,9 @@ PANELS = [
         "title": "A — Mandelbrot",
         "subtitle": "800×600px, 500 max iter",
         "bars": [
-            ("Mojo", "mojo", BLUE),
-            ("NumPy", "numpy", ORANGE),
-            ("Python", "python", AQUA),
+            ("Mojo", "mojo", MOJO),
+            ("NumPy", "numpy", OPT_LIB),
+            ("Python", "python", NAIVE_PY),
         ],
         "ylabel": "seconds (mean of 7 trials)",
     },
@@ -60,9 +65,9 @@ PANELS = [
         "title": "B — Sieve of Eratosthenes",
         "subtitle": "primes up to 50,000,000",
         "bars": [
-            ("Mojo", "mojo", BLUE),
-            ("NumPy", "numpy", ORANGE),
-            ("Python", "python", AQUA),
+            ("Mojo", "mojo", MOJO),
+            ("NumPy", "numpy", OPT_LIB),
+            ("Python", "python", NAIVE_PY),
         ],
         "ylabel": "seconds (mean of 7 trials)",
     },
@@ -71,18 +76,18 @@ PANELS = [
         "title": "C — Word frequency",
         "subtitle": "15M tokens, 62.4 MiB corpus",
         "bars": [
-            ("Mojo", "mojo", BLUE),
-            ("Counter", "python (Counter)", ORANGE),
-            ("dict", "python (dict)", AQUA),
+            ("Mojo", "mojo", MOJO),
+            ("Counter", "python (Counter)", OPT_LIB),
+            ("dict", "python (dict)", NAIVE_PY),
         ],
         "ylabel": "seconds, incl. file read (mean of 7 trials)",
     },
 ]
 
 LEGEND_HANDLES = [
-    plt.Rectangle((0, 0), 1, 1, color=BLUE, label="Mojo"),
-    plt.Rectangle((0, 0), 1, 1, color=ORANGE, label="Optimized C-backed library (NumPy / Counter)"),
-    plt.Rectangle((0, 0), 1, 1, color=AQUA, label="Naive Python"),
+    plt.Rectangle((0, 0), 1, 1, color=MOJO, label="Mojo"),
+    plt.Rectangle((0, 0), 1, 1, color=OPT_LIB, label="Optimized C-backed library (NumPy / Counter)"),
+    plt.Rectangle((0, 0), 1, 1, color=NAIVE_PY, label="Naive Python"),
 ]
 
 
