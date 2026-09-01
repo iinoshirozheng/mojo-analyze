@@ -26,6 +26,8 @@ reported including the two where Mojo doesn't win.
 
 ## Results at a glance
 
+![Same three categories, indexed to a common base — who wins each one](results/chart_speedup.png)
+
 | Category | Task | Winner | Mojo vs. fastest non-Mojo |
 |---|---|---|---|
 | A — SIMD-friendly | Mandelbrot render | **Mojo** | 12.1x faster than NumPy |
@@ -34,9 +36,9 @@ reported including the two where Mojo doesn't win.
 
 Mojo wins decisively on embarrassingly-parallel numeric SIMD work and loses
 or ties where memory allocation and hash-table/string maturity dominate
-instead of raw arithmetic. Full methodology, root-cause analysis for each
-result (including a real FMA-rounding bug the checksum gate caught), and
-threats to validity are in [`ANALYSIS.md`](ANALYSIS.md).
+instead of raw arithmetic. Full methodology, per-category charts, root-cause
+analysis for each result (including a real FMA-rounding bug the checksum
+gate caught), and threats to validity are in [`ANALYSIS.md`](ANALYSIS.md).
 
 ## What it does
 
@@ -76,10 +78,11 @@ pixi install
 pixi run build             # compiles the three Mojo binaries -> dist/
 pixi run prepare-corpus    # regenerates the synthetic word-frequency corpus (seeded, deterministic)
 pixi run bench              # runs the full suite, writes results/results.json
+pixi run charts             # renders the charts in ANALYSIS.md from results.json
 ```
 
 `pixi run bench` accepts `--trials N` (default 5), `--warmup N` (default 1),
-and `--only mandelbrot,sieve` to run a subset. The numbers in
+and `--only mandelbrot,sieve` to run a subset. The numbers and charts in
 [`ANALYSIS.md`](ANALYSIS.md) were produced with `--trials 7 --warmup 2`.
 
 ## How it works

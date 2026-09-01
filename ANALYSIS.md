@@ -27,6 +27,16 @@ built for GPU/SIMD kernels being outrun by CPython's C-implemented `Counter`
 on a Dict-heavy string workload is a legible, specific gap, not a vague
 "Mojo isn't fast" verdict.
 
+![Same three categories, indexed to a common base — who wins each one](results/chart_speedup.png)
+
+The three categories live on wildly different absolute timescales (55ms to
+2.3s), so this chart indexes each category to its own fastest variant = 1.0x
+rather than plotting raw seconds on one axis — otherwise the tiny Mandelbrot
+bars would be visually meaningless next to the others. Full absolute numbers
+are in [Results](#results) below, generated from the same
+[`results/results.json`](results/results.json) by
+[`scripts/make_charts.py`](scripts/make_charts.py) (`pixi run charts`).
+
 ## Methodology
 
 - **Hardware**: Apple M4 Pro, 14 cores, 24 GB RAM, macOS 26.5.2, arm64.
@@ -54,6 +64,7 @@ on a Dict-heavy string workload is a legible, specific gap, not a vague
   pixi run build             # compiles the three Mojo binaries -> dist/
   pixi run prepare-corpus    # regenerates the synthetic corpus (seeded, deterministic)
   pixi run bench              # runs everything, writes results/results.json
+  pixi run charts             # renders the two PNGs embedded in this doc
   ```
 
 ### Threats to validity
@@ -82,6 +93,13 @@ Read this before citing a number from this doc elsewhere:
   micro-optimization effort.
 
 ## Results
+
+![Mojo vs. Python vs. NumPy — mean wall-clock time, lower is better, three panels one per category](results/chart_absolute.png)
+
+Error bars are ±1 stdev across the 7 measured trials. Bar color is by *role*
+across all charts in this doc, not by language name: blue is always Mojo,
+orange is always the optimized C-backed library alternative (NumPy for A/B,
+`Counter` for C), aqua is always the naive/pure-Python implementation.
 
 ### A — Mandelbrot (SIMD-friendly)
 

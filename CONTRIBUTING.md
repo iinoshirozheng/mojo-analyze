@@ -13,6 +13,7 @@ pixi install
 pixi run build            # compiles all three Mojo binaries -> dist/
 pixi run prepare-corpus   # regenerates the synthetic word-frequency corpus
 pixi run bench             # runs the full suite, writes results/results.json
+pixi run charts            # renders results/chart_*.png from results.json
 ```
 
 If `pixi run` fails with `unable to locate module 'std'` right after cloning
@@ -52,6 +53,9 @@ not that "Mojo does it differently."
   fresh run rather than leaving stale numbers next to new code — include
   your hardware (`ANALYSIS.md`'s methodology section shows the format) since
   these are wall-clock comparisons, not portable benchmarks.
+- Re-run `pixi run charts` after any `pixi run bench` that changes
+  `results/results.json`, and commit the regenerated PNGs alongside it — a
+  chart that doesn't match the numbers next to it is worse than no chart.
 
 ## Ideas that would be welcome
 
