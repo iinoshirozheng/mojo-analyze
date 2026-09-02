@@ -7,6 +7,10 @@ comptime ASCII_A: UInt8 = 65
 comptime ASCII_Z: UInt8 = 90
 comptime ASCII_0: UInt8 = 48
 comptime ASCII_9: UInt8 = 57
+comptime FNV_OFFSET: UInt64 = 14695981039346656037
+comptime FNV_PRIME: UInt64 = 1099511628211
+comptime CAPACITY = 8192
+comptime MASK = CAPACITY - 1
 
 
 def is_alnum_byte(b: UInt8) -> Bool:
@@ -48,56 +52,104 @@ def comes_before(a: WordCount, b: WordCount) -> Bool:
 def main() raises:
     var corpus_path = parse_corpus_arg()
 
-    var start = perf_counter_ns()
+    var start_time = perf_counter_ns()
 
     var text = open(corpus_path, "r").read()
     var data = text.as_bytes()
     var n = len(data)
 
-    var counts = Dict[String, Int]()
+    # Fixed-capacity open-addressing hash table keyed by byte spans into
+    # `data` (start, end) — no per-token String/List allocation in the hot
+    # loop, unlike the previous Dict[String, Int] version. 8192 slots
+    # comfortably covers the real corpus's 317 unique words; if this
+    # generator's vocabulary ever grows past ~1000 words this should be
+    # bumped or made to resize.
+    var slot_used = List[Bool](length=CAPACITY, fill=False)
+    var slot_hash = List[UInt64](length=CAPACITY, fill=0)
+    var slot_start = List[Int](length=CAPACITY, fill=0)
+    var slot_end = List[Int](length=CAPACITY, fill=0)
+    var slot_count = List[Int](length=CAPACITY, fill=0)
     var total_tokens = 0
-    var token_bytes = List[UInt8]()
 
     var idx = 0
-    while idx < n:
-        var b = data[idx]
-        if is_alnum_byte(b):
-            token_bytes.append(lower_byte(b))
-        else:
-            if len(token_bytes) > 0:
-                var word = String(unsafe_from_utf8=Span(token_bytes))
+    var token_start = -1
+    while idx <= n:
+        var at_boundary = True
+        if idx < n:
+            if is_alnum_byte(data[idx]):
+                at_boundary = False
+
+        if at_boundary:
+            if token_start >= 0:
+                var tok_start = token_start
+                var tok_end = idx
+                var span_len = tok_end - tok_start
+
+                var h: UInt64 = FNV_OFFSET
+                var i = tok_start
+                while i < tok_end:
+                    h = h ^ UInt64(lower_byte(data[i]))
+                    h = h * FNV_PRIME
+                    i += 1
+
+                var slot = Int(h) & MASK
+                while True:
+                    if not slot_used[slot]:
+                        slot_used[slot] = True
+                        slot_hash[slot] = h
+                        slot_start[slot] = tok_start
+                        slot_end[slot] = tok_end
+                        slot_count[slot] = 0
+                        break
+
+                    var matches = False
+                    if slot_hash[slot] == h and (slot_end[slot] - slot_start[slot]) == span_len:
+                        matches = True
+                        var j = 0
+                        while j < span_len:
+                            if lower_byte(data[slot_start[slot] + j]) != lower_byte(data[tok_start + j]):
+                                matches = False
+                                break
+                            j += 1
+
+                    if matches:
+                        break
+                    slot = (slot + 1) & MASK
+
+                slot_count[slot] = slot_count[slot] + 1
                 total_tokens += 1
-                if word in counts:
-                    counts[word] = counts[word] + 1
-                else:
-                    counts[word] = 1
-                token_bytes = List[UInt8]()
+                token_start = -1
+        else:
+            if token_start < 0:
+                token_start = idx
+
         idx += 1
 
-    if len(token_bytes) > 0:
-        var word = String(unsafe_from_utf8=Span(token_bytes))
-        total_tokens += 1
-        if word in counts:
-            counts[word] = counts[word] + 1
-        else:
-            counts[word] = 1
-
     var entries = List[WordCount]()
-    for entry in counts.items():
-        entries.append(WordCount(entry.key.copy(), entry.value))
+    var s = 0
+    while s < CAPACITY:
+        if slot_used[s]:
+            var buf = List[UInt8]()
+            var p = slot_start[s]
+            while p < slot_end[s]:
+                buf.append(lower_byte(data[p]))
+                p += 1
+            var word = String(unsafe_from_utf8=Span(buf))
+            entries.append(WordCount(word, slot_count[s]))
+        s += 1
 
     var m = len(entries)
-    var i = 1
-    while i < m:
-        var current = entries[i].copy()
-        var j = i - 1
-        while j >= 0 and not comes_before(entries[j], current):
-            entries[j + 1] = entries[j].copy()
-            j -= 1
-        entries[j + 1] = current.copy()
-        i += 1
+    var ii = 1
+    while ii < m:
+        var current = entries[ii].copy()
+        var jj = ii - 1
+        while jj >= 0 and not comes_before(entries[jj], current):
+            entries[jj + 1] = entries[jj].copy()
+            jj -= 1
+        entries[jj + 1] = current.copy()
+        ii += 1
 
-    var elapsed_ns = perf_counter_ns() - start
+    var elapsed_ns = perf_counter_ns() - start_time
     var elapsed = Float64(elapsed_ns) / 1_000_000_000.0
 
     print("Top 20 words:")

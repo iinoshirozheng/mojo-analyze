@@ -1,0 +1,23 @@
+[package]
+name = "mojo-analyze-rust"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mandelbrot"
+path = "src/bin/mandelbrot.rs"
+
+[[bin]]
+name = "sieve"
+path = "src/bin/sieve.rs"
+
+[[bin]]
+name = "wordfreq"
+path = "src/bin/wordfreq.rs"
+
+[[bin]]
+name = "csvagg"
+path = "src/bin/csvagg.rs"
+
+[profile.release]
+opt-level = 3

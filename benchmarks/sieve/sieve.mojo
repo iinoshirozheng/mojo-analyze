@@ -20,26 +20,39 @@ def main() raises:
 
     var start_ns = perf_counter_ns()
 
-    var is_prime = List[UInt8](length=limit + 1, fill=1)
-    is_prime[0] = 0
+    # Raw-pointer version: `alloc[T](n)` still emits a "Layout-based alloc"
+    # deprecation warning on this stable (1.0.x) toolchain — the compiler's
+    # suggested replacement, `unsafe_alloc`, does not actually resolve as a
+    # symbol anywhere in this release (checked: not in the prelude, not under
+    # `std.memory`/`std.sys`, not a static method on `Pointer`/`UnsafePointer`)
+    # — so `alloc` + unsafe indexing is the best currently-achievable raw
+    # pointer path; `p[unsafe_offset=i]` indexing and `.unsafe_free()` are
+    # both clean (no warnings) on top of it. The whole point of this rewrite
+    # is to skip List's per-element bounds check in the hot marking loop.
+    var is_prime = alloc[UInt8](limit + 1)
+    for idx in range(limit + 1):
+        is_prime[unsafe_offset=idx] = 1
+    is_prime[unsafe_offset=0] = 0
     if limit >= 1:
-        is_prime[1] = 0
+        is_prime[unsafe_offset=1] = 0
 
     var i = 2
     while i * i <= limit:
-        if is_prime[i] == 1:
+        if is_prime[unsafe_offset=i] == 1:
             var j = i * i
             while j <= limit:
-                is_prime[j] = 0
+                is_prime[unsafe_offset=j] = 0
                 j += i
         i += 1
 
     var count = 0
     var total = 0
     for idx in range(2, limit + 1):
-        if is_prime[idx] == 1:
+        if is_prime[unsafe_offset=idx] == 1:
             count += 1
             total += idx
+
+    is_prime.unsafe_free()
 
     var elapsed_ns = perf_counter_ns() - start_ns
     var elapsed_s = Float64(elapsed_ns) / 1_000_000_000.0

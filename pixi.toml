@@ -6,9 +6,13 @@ platforms = ["osx-arm64", "linux-64", "linux-aarch64"]
 version = "0.1.0"
 
 [tasks]
-build = "mkdir -p dist && mojo build --fp-mode contract=off benchmarks/mandelbrot/mandelbrot.mojo -o dist/mandelbrot-mojo && mojo build benchmarks/sieve/sieve.mojo -o dist/sieve-mojo && mojo build benchmarks/wordfreq/wordfreq.mojo -o dist/wordfreq-mojo"
+build = "mkdir -p dist && mojo build --fp-mode contract=off benchmarks/mandelbrot/mandelbrot.mojo -o dist/mandelbrot-mojo && mojo build benchmarks/sieve/sieve.mojo -o dist/sieve-mojo && mojo build benchmarks/wordfreq/wordfreq.mojo -o dist/wordfreq-mojo && mojo build benchmarks/csvagg/csvagg.mojo -o dist/csvagg-mojo"
+build-gpu = "mkdir -p dist && mojo build benchmarks/mandelbrot/mandelbrot_gpu.mojo -o dist/mandelbrot-gpu"
+build-rust = "mkdir -p dist && cargo build --release --manifest-path rust/Cargo.toml && cp rust/target/release/mandelbrot dist/mandelbrot-rust && cp rust/target/release/sieve dist/sieve-rust && cp rust/target/release/wordfreq dist/wordfreq-rust && cp rust/target/release/csvagg dist/csvagg-rust"
 prepare-corpus = "python benchmarks/wordfreq/prepare_corpus.py"
+prepare-data = "python benchmarks/csvagg/prepare_data.py"
 bench = "python scripts/bench.py"
+bench-gpu = "python scripts/bench_gpu.py"
 charts = "python scripts/make_charts.py"
 
 [dependencies]
@@ -16,3 +20,5 @@ mojo = ">=1.0.0,<2"
 python = ">=3.14.7,<3.15"
 numpy = ">=2.5.2,<3"
 matplotlib = ">=3.11.1,<4"
+pandas = ">=3.0.5,<4"
+max = ">=26.5.0,<27"

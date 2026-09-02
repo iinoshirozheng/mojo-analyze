@@ -31,6 +31,13 @@ BENCHMARKS = [
                 ],
             },
             {
+                "label": "rust",
+                "cmd": [
+                    str(ROOT / "dist" / "mandelbrot-rust"),
+                    "--width", "800", "--height", "600", "--max-iter", "500",
+                ],
+            },
+            {
                 "label": "numpy",
                 "cmd": [
                     PY, str(ROOT / "benchmarks/mandelbrot/mandelbrot_numpy.py"),
@@ -54,6 +61,10 @@ BENCHMARKS = [
             {
                 "label": "mojo",
                 "cmd": [str(ROOT / "dist" / "sieve-mojo"), "--limit", "50000000"],
+            },
+            {
+                "label": "rust",
+                "cmd": [str(ROOT / "dist" / "sieve-rust"), "--limit", "50000000"],
             },
             {
                 "label": "numpy",
@@ -84,6 +95,13 @@ BENCHMARKS = [
                 ],
             },
             {
+                "label": "rust",
+                "cmd": [
+                    str(ROOT / "dist" / "wordfreq-rust"),
+                    "--corpus", str(ROOT / "benchmarks/wordfreq/data/corpus.txt"),
+                ],
+            },
+            {
                 "label": "python (Counter)",
                 "cmd": [
                     PY, str(ROOT / "benchmarks/wordfreq/wordfreq_counter.py"),
@@ -95,6 +113,41 @@ BENCHMARKS = [
                 "cmd": [
                     PY, str(ROOT / "benchmarks/wordfreq/wordfreq_python.py"),
                     "--corpus", str(ROOT / "benchmarks/wordfreq/data/corpus.txt"),
+                ],
+            },
+        ],
+    },
+    {
+        "name": "csvagg",
+        "category": "D — real-world tabular CSV aggregation",
+        "params": {"csv": "benchmarks/csvagg/data/orders.csv"},
+        "variants": [
+            {
+                "label": "mojo",
+                "cmd": [
+                    str(ROOT / "dist" / "csvagg-mojo"),
+                    "--csv", str(ROOT / "benchmarks/csvagg/data/orders.csv"),
+                ],
+            },
+            {
+                "label": "rust",
+                "cmd": [
+                    str(ROOT / "dist" / "csvagg-rust"),
+                    "--csv", str(ROOT / "benchmarks/csvagg/data/orders.csv"),
+                ],
+            },
+            {
+                "label": "python (pandas)",
+                "cmd": [
+                    PY, str(ROOT / "benchmarks/csvagg/csvagg_pandas.py"),
+                    "--csv", str(ROOT / "benchmarks/csvagg/data/orders.csv"),
+                ],
+            },
+            {
+                "label": "python (manual)",
+                "cmd": [
+                    PY, str(ROOT / "benchmarks/csvagg/csvagg_python.py"),
+                    "--csv", str(ROOT / "benchmarks/csvagg/data/orders.csv"),
                 ],
             },
         ],
