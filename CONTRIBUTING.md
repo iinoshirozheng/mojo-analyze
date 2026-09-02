@@ -10,13 +10,15 @@ the whole point is that the numbers have to be trustworthy.
 git clone https://github.com/iinoshirozheng/mojo-analyze.git
 cd mojo-analyze
 pixi install
-pixi run build            # compiles the four CPU Mojo binaries -> dist/
+pixi run build            # compiles the five CPU Mojo binaries -> dist/
 pixi run build-rust       # cargo build --release, copies binaries -> dist/
-pixi run build-gpu        # compiles the GPU Mandelbrot kernel (needs a GPU)
+pixi run build-c          # clang -O3, five binaries -> dist/
+pixi run build-gpu        # compiles four GPU kernels (needs a GPU)
 pixi run prepare-corpus   # regenerates the synthetic word-frequency corpus
 pixi run prepare-data     # regenerates the synthetic CSV aggregation data
-pixi run bench             # runs the four core categories, writes results/results.json
-pixi run bench-gpu         # separate CPU-vs-GPU Mandelbrot mini-benchmark
+pixi run prepare-events   # regenerates the synthetic JSON event data
+pixi run bench             # runs the five core categories, writes results/results.json
+pixi run bench-gpu         # four CPU-vs-GPU mini-benchmarks
 pixi run charts            # renders results/chart_*.png from results.json
 ```
 
@@ -36,30 +38,42 @@ to confirm a pattern compiles the way you expect.
 
 ## The rule that matters most: checksums must agree
 
-Every benchmark's Mojo/Rust/Python/NumPy(-or-pandas) variants must produce
-byte-identical `CHECKSUM` output for the same input (see each benchmark's
-own comments for what's hashed). `scripts/bench.py` enforces this
-automatically and refuses to report timings if variants disagree. If you're
-tempted to skip this check to "just see the numbers" — don't. A fast wrong
-answer isn't a result, it's a bug wearing a result's clothes. This
+Every benchmark's Mojo/Rust/C/Python/NumPy(-or-pandas-or-json) variants
+must produce byte-identical `CHECKSUM` output for the same input (see each
+benchmark's own comments for what's hashed). `scripts/bench.py` enforces
+this automatically and refuses to report timings if variants disagree. If
+you're tempted to skip this check to "just see the numbers" — don't. A fast
+wrong answer isn't a result, it's a bug wearing a result's clothes. This
 project's whole value is honest, reproducible comparisons; a mismatched
-checksum means something is broken, not that "Mojo does it differently."
+checksum means something is broken, not that "Mojo does it differently" —
+and it's the same standard when the fast-but-wrong variant is Rust or C,
+not just Mojo.
 
-The one deliberate, disclosed exception is `scripts/bench_gpu.py` — Apple
-Metal has no compute-kernel float64 support, so the GPU Mandelbrot kernel
-runs in Float32 against a Float64 CPU reference by hardware necessity, and
-that comparison is explicitly *not* checksum-gated (see `ANALYSIS.md`'s GPU
-section). Don't extend that exception to anything else without an equally
-concrete hardware reason.
+The one deliberate, disclosed exception is Mandelbrot's GPU kernel in
+`scripts/bench_gpu.py` — Apple Metal has no compute-kernel float64 support,
+so it runs in Float32 against a Float64 CPU reference by hardware
+necessity, and that one comparison is explicitly *not* checksum-gated (see
+`ANALYSIS.md`'s GPU section). The other three GPU kernels (sieve,
+word-frequency, CSV agg) use integer-only arithmetic and *are* held to the
+normal exact-match standard — don't extend the Mandelbrot exception to
+anything else without an equally concrete hardware reason (a real one
+turned up mid-project: Apple GPU also has no 64-bit atomic add, which the
+CSV-agg GPU kernel works around with a disclosed 32-bit carry-propagation
+trick rather than an exemption — see its header comment).
 
 ## Before opening a PR
 
-- `pixi run build` succeeds with no warnings you introduced.
+- `pixi run build` (and `build-rust`/`build-c`/`build-gpu` if you touched
+  those) succeeds with no warnings you introduced.
 - `pixi run bench` reports checksum agreement for every benchmark you
   touched — paste the summary table into the PR description.
 - If you're adding a new benchmark task or a new language variant, keep the
   timing contract in `scripts/bench.py`'s docstring (`TIME_SECONDS:` /
   `CHECKSUM:` as the last two stdout lines) — the harness parses on that.
+  If you add a systems-language variant (Mojo/Rust/C), match the existing
+  role-color convention in `scripts/make_charts.py` (orange/violet/magenta
+  respectively) rather than inventing a new one — see that file's palette
+  comment for the validated adjacent-pairs color order.
 - If a change moves the numbers meaningfully, update `ANALYSIS.md` with a
   fresh run rather than leaving stale numbers next to new code — include
   your hardware (`ANALYSIS.md`'s methodology section shows the format) since
@@ -70,26 +84,38 @@ concrete hardware reason.
 
 ## Ideas that would be welcome
 
-- A hand-written C (`-O3`) reference point alongside Rust, especially for
-  category D (CSV aggregation) — the one category where Mojo currently
-  trails Rust; a C baseline would help tell "genuine current Mojo gap" apart
-  from "Rust's allocator/HashMap happens to be very good here."
-- A byte-span/borrowed-slice rewrite of category D's Mojo `Dict` key (it
-  currently allocates a `String` per row for the category field, the last
-  remaining per-row allocation in that benchmark) to see if it can close
-  the ~20% gap with Rust the way categories B and C's rewrites did.
-- More tasks in category-C/D's spirit (real-world data processing) — JSON
-  parsing, a hash-table-heavy workload independent of string parsing, or a
-  sort/dedup benchmark are open candidates.
-- GPU implementations of the other three CPU benchmarks (sieve, word-freq,
-  CSV agg), for comparison against `mandelbrot_gpu.mojo`'s pattern.
-- Linux CI (`.github/workflows/benchmark.yml`) is live and its first run is
-  now summarized in `ANALYSIS.md`'s [Cross-platform](ANALYSIS.md#cross-platform-what-linux-ci-actually-shows)
-  section — but that's one run at 3 trials on shared runners. Category B's
-  ranking flip on Linux arm64 (NumPy edges Mojo back out there, unlike
-  macOS arm64 and Linux x86_64) is flagged as unresolved; a few more CI
-  runs, or real (non-shared) arm64 Linux hardware, would help tell a real
-  effect apart from one noisy run.
+- **A raw-pointer rewrite of the word-freq/csvagg/jsonparse hash tables'
+  slot arrays.** `ANALYSIS.md`'s category-C section found that C beats
+  Mojo by ~1.6x on the *identical* byte-span hash-table algorithm, and
+  attributes the gap to Mojo's `List[Bool]`/`List[UInt64]`/`List[Int]` slot
+  arrays still paying `List`'s bounds-check overhead per hash-table probe
+  — the same mechanism category B's raw-pointer sieve rewrite eliminated.
+  Applying that same fix to categories C, D, and E together (they share the
+  identical hash-table pattern) would directly test that hypothesis across
+  three categories at once, and category E in particular (currently Mojo's
+  only 3rd-place finish) is the best candidate to re-test after.
+- **Investigate the Linux arm64 Sieve reversal at the codegen level.**
+  `ANALYSIS.md`'s cross-platform section confirms — across 7 independent CI
+  runs — that NumPy beats Mojo's raw-pointer sieve specifically on Linux
+  arm64 (GitHub-hosted runners), while Mojo wins on both macOS arm64 and
+  Linux x86_64. The current write-up flags a codegen-difference hypothesis
+  (NEON/SVE autovectorization differences between Apple's and this Linux
+  runner's LLVM backend) but doesn't confirm it. Real (non-shared) arm64
+  Linux hardware and a look at the actual generated assembly would turn
+  this from a hypothesis into an answer.
+- **A GPU port for category E (JSON parsing).** The other four categories
+  all have a GPU kernel (`benchmarks/*/[name]_gpu.mojo`); JSON parsing does
+  not, since its work is dominated by inherently sequential byte-scanning.
+  A CPU-scan/GPU-parallel-something split, following the disclosed-split
+  pattern the word-freq and CSV-agg GPU kernels already use, is an open
+  design problem, not a mechanical port.
+- **A cleaner Linux CI comparison across all five categories with C
+  included.** The workflow was just updated to build C and add category E;
+  the cross-platform table in `ANALYSIS.md` will need a fresh set of runs
+  to include both once they've accumulated a few pushes' worth of data.
+- More tasks in category C/D/E's spirit (real-world data processing) — a
+  hash-table-heavy workload independent of string parsing, or a sort/dedup
+  benchmark, are open candidates.
 
 ## Reporting issues
 

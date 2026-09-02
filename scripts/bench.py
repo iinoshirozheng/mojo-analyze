@@ -38,6 +38,13 @@ BENCHMARKS = [
                 ],
             },
             {
+                "label": "c",
+                "cmd": [
+                    str(ROOT / "dist" / "mandelbrot-c"),
+                    "--width", "800", "--height", "600", "--max-iter", "500",
+                ],
+            },
+            {
                 "label": "numpy",
                 "cmd": [
                     PY, str(ROOT / "benchmarks/mandelbrot/mandelbrot_numpy.py"),
@@ -65,6 +72,10 @@ BENCHMARKS = [
             {
                 "label": "rust",
                 "cmd": [str(ROOT / "dist" / "sieve-rust"), "--limit", "50000000"],
+            },
+            {
+                "label": "c",
+                "cmd": [str(ROOT / "dist" / "sieve-c"), "--limit", "50000000"],
             },
             {
                 "label": "numpy",
@@ -98,6 +109,13 @@ BENCHMARKS = [
                 "label": "rust",
                 "cmd": [
                     str(ROOT / "dist" / "wordfreq-rust"),
+                    "--corpus", str(ROOT / "benchmarks/wordfreq/data/corpus.txt"),
+                ],
+            },
+            {
+                "label": "c",
+                "cmd": [
+                    str(ROOT / "dist" / "wordfreq-c"),
                     "--corpus", str(ROOT / "benchmarks/wordfreq/data/corpus.txt"),
                 ],
             },
@@ -137,6 +155,13 @@ BENCHMARKS = [
                 ],
             },
             {
+                "label": "c",
+                "cmd": [
+                    str(ROOT / "dist" / "csvagg-c"),
+                    "--csv", str(ROOT / "benchmarks/csvagg/data/orders.csv"),
+                ],
+            },
+            {
                 "label": "python (pandas)",
                 "cmd": [
                     PY, str(ROOT / "benchmarks/csvagg/csvagg_pandas.py"),
@@ -148,6 +173,48 @@ BENCHMARKS = [
                 "cmd": [
                     PY, str(ROOT / "benchmarks/csvagg/csvagg_python.py"),
                     "--csv", str(ROOT / "benchmarks/csvagg/data/orders.csv"),
+                ],
+            },
+        ],
+    },
+    {
+        "name": "jsonparse",
+        "category": "E — real-world nested JSON parsing",
+        "params": {"json": "benchmarks/jsonparse/data/events.json"},
+        "variants": [
+            {
+                "label": "mojo",
+                "cmd": [
+                    str(ROOT / "dist" / "jsonparse-mojo"),
+                    "--json", str(ROOT / "benchmarks/jsonparse/data/events.json"),
+                ],
+            },
+            {
+                "label": "rust",
+                "cmd": [
+                    str(ROOT / "dist" / "jsonparse-rust"),
+                    "--json", str(ROOT / "benchmarks/jsonparse/data/events.json"),
+                ],
+            },
+            {
+                "label": "c",
+                "cmd": [
+                    str(ROOT / "dist" / "jsonparse-c"),
+                    "--json", str(ROOT / "benchmarks/jsonparse/data/events.json"),
+                ],
+            },
+            {
+                "label": "python (json)",
+                "cmd": [
+                    PY, str(ROOT / "benchmarks/jsonparse/jsonparse_stdlib.py"),
+                    "--json", str(ROOT / "benchmarks/jsonparse/data/events.json"),
+                ],
+            },
+            {
+                "label": "python (manual)",
+                "cmd": [
+                    PY, str(ROOT / "benchmarks/jsonparse/jsonparse_python.py"),
+                    "--json", str(ROOT / "benchmarks/jsonparse/data/events.json"),
                 ],
             },
         ],

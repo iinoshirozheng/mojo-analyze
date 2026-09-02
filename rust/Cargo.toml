@@ -19,5 +19,9 @@ path = "src/bin/wordfreq.rs"
 name = "csvagg"
 path = "src/bin/csvagg.rs"
 
+[[bin]]
+name = "jsonparse"
+path = "src/bin/jsonparse.rs"
+
 [profile.release]
 opt-level = 3

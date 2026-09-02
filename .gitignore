@@ -2,6 +2,7 @@
 dist/
 benchmarks/wordfreq/data/*.txt
 benchmarks/csvagg/data/*.csv
+benchmarks/jsonparse/data/*.json
 rust/target/
 __pycache__/
 *.pyc

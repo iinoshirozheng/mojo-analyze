@@ -6,11 +6,13 @@ platforms = ["osx-arm64", "linux-64", "linux-aarch64"]
 version = "0.1.0"
 
 [tasks]
-build = "mkdir -p dist && mojo build --fp-mode contract=off benchmarks/mandelbrot/mandelbrot.mojo -o dist/mandelbrot-mojo && mojo build benchmarks/sieve/sieve.mojo -o dist/sieve-mojo && mojo build benchmarks/wordfreq/wordfreq.mojo -o dist/wordfreq-mojo && mojo build benchmarks/csvagg/csvagg.mojo -o dist/csvagg-mojo"
-build-gpu = "mkdir -p dist && mojo build benchmarks/mandelbrot/mandelbrot_gpu.mojo -o dist/mandelbrot-gpu"
-build-rust = "mkdir -p dist && cargo build --release --manifest-path rust/Cargo.toml && cp rust/target/release/mandelbrot dist/mandelbrot-rust && cp rust/target/release/sieve dist/sieve-rust && cp rust/target/release/wordfreq dist/wordfreq-rust && cp rust/target/release/csvagg dist/csvagg-rust"
+build = "mkdir -p dist && mojo build --fp-mode contract=off benchmarks/mandelbrot/mandelbrot.mojo -o dist/mandelbrot-mojo && mojo build benchmarks/sieve/sieve.mojo -o dist/sieve-mojo && mojo build benchmarks/wordfreq/wordfreq.mojo -o dist/wordfreq-mojo && mojo build benchmarks/csvagg/csvagg.mojo -o dist/csvagg-mojo && mojo build benchmarks/jsonparse/jsonparse.mojo -o dist/jsonparse-mojo"
+build-gpu = "mkdir -p dist && mojo build benchmarks/mandelbrot/mandelbrot_gpu.mojo -o dist/mandelbrot-gpu && mojo build benchmarks/sieve/sieve_gpu.mojo -o dist/sieve-gpu && mojo build benchmarks/wordfreq/wordfreq_gpu.mojo -o dist/wordfreq-gpu && mojo build benchmarks/csvagg/csvagg_gpu.mojo -o dist/csvagg-gpu"
+build-rust = "mkdir -p dist && cargo build --release --manifest-path rust/Cargo.toml && cp rust/target/release/mandelbrot dist/mandelbrot-rust && cp rust/target/release/sieve dist/sieve-rust && cp rust/target/release/wordfreq dist/wordfreq-rust && cp rust/target/release/csvagg dist/csvagg-rust && cp rust/target/release/jsonparse dist/jsonparse-rust"
+build-c = "mkdir -p dist && clang -O3 -ffp-contract=off -o dist/mandelbrot-c c/mandelbrot.c && clang -O3 -o dist/sieve-c c/sieve.c && clang -O3 -o dist/wordfreq-c c/wordfreq.c && clang -O3 -o dist/csvagg-c c/csvagg.c && clang -O3 -o dist/jsonparse-c c/jsonparse.c"
 prepare-corpus = "python benchmarks/wordfreq/prepare_corpus.py"
 prepare-data = "python benchmarks/csvagg/prepare_data.py"
+prepare-events = "python benchmarks/jsonparse/prepare_events.py"
 bench = "python scripts/bench.py"
 bench-gpu = "python scripts/bench_gpu.py"
 charts = "python scripts/make_charts.py"

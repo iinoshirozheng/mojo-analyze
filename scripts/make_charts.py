@@ -20,22 +20,25 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS = json.loads((ROOT / "results/results.json").read_text())
 OUT = ROOT / "results"
 
-# Categorical palette (dataviz skill default, slots 1-3 + violet — validated
-# ALL-PAIRS (not just adjacent), both CVD and normal-vision floors, for this
-# exact 4-color set: `node validate_palette.js "#eb6834,#2a78d6,#1baf7a,
-# #4a3aa7" --mode light --pairs all` -> worst CVD 9.2/9.6 (deutan/tritan),
-# worst normal-vision 16.3 (clears the 15 floor). Two rejected candidates for
-# the 4th (Rust) slot, both tried and failed before landing on violet:
-#   - pure green #008300 alongside orange: CVD 3.2 (protan) — classic
-#     green/orange confusion pair, hard FAIL.
-#   - the palette's own documented slot-4 yellow: FAILS all-pairs alongside
-#     orange per the palette's own docs (normal-vision 13.7, CVD 4.8 dark).
-#   - red #e34948: FAILS alongside orange, both warm hues (CVD 5.6, normal-
-#     vision 7.1 — nowhere close to the 15 floor).
+# Categorical palette (dataviz skill default hues). 4-color set (orange/
+# blue/aqua/violet) validated ALL-PAIRS earlier; adding a 5th slot for C
+# (magenta) failed all-pairs (contrast/CVD budget exhausted past 4 series --
+# expected per the skill's own docs, which cap all-pairs forms at 3-4), so
+# the 5-bar panels are validated ADJACENT-PAIRS instead (the correct test
+# for grouped bar charts, where only neighbors are ever directly compared --
+# `node validate_palette.js "#eb6834,#4a3aa7,#e87ba4,#2a78d6,#1baf7a"
+# --mode light`, bar order Mojo/Rust/C/OptLib/NaivePy exactly as drawn):
+# ALL CHECKS PASS, worst adjacent CVD 13.0, worst normal-vision 24.0. Do not
+# reorder the bars within a panel without re-validating this exact sequence.
+# Two rejected candidates for the 4th (Rust) slot, tried and failed before
+# landing on violet: pure green #008300 alongside orange (CVD 3.2 protan,
+# classic green/orange confusion), and red #e34948 (CVD 5.6, normal-vision
+# 7.1, both warm hues too close to orange).
 MOJO = "#eb6834"      # orange — role: Mojo (compiled, throughout)
-OPT_LIB = "#2a78d6"   # blue — role: optimized C-backed library alt (NumPy / Counter / pandas)
-NAIVE_PY = "#1baf7a"  # aqua/green — role: naive/pure Python
 RUST = "#4a3aa7"      # violet — role: Rust reference (release build, std only)
+C_LANG = "#e87ba4"    # magenta — role: C reference (-O3, std only)
+OPT_LIB = "#2a78d6"   # blue — role: optimized C-backed library alt (NumPy / Counter / pandas / json)
+NAIVE_PY = "#1baf7a"  # aqua/green — role: naive/pure Python
 
 TEXT_PRIMARY = "#0b0b0b"
 TEXT_SECONDARY = "#52514e"
@@ -64,6 +67,7 @@ PANELS = [
         "bars": [
             ("Mojo", "mojo", MOJO),
             ("Rust", "rust", RUST),
+            ("C", "c", C_LANG),
             ("NumPy", "numpy", OPT_LIB),
             ("Python", "python", NAIVE_PY),
         ],
@@ -76,6 +80,7 @@ PANELS = [
         "bars": [
             ("Mojo", "mojo", MOJO),
             ("Rust", "rust", RUST),
+            ("C", "c", C_LANG),
             ("NumPy", "numpy", OPT_LIB),
             ("Python", "python", NAIVE_PY),
         ],
@@ -88,6 +93,7 @@ PANELS = [
         "bars": [
             ("Mojo", "mojo", MOJO),
             ("Rust", "rust", RUST),
+            ("C", "c", C_LANG),
             ("Counter", "python (Counter)", OPT_LIB),
             ("dict", "python (dict)", NAIVE_PY),
         ],
@@ -100,7 +106,21 @@ PANELS = [
         "bars": [
             ("Mojo", "mojo", MOJO),
             ("Rust", "rust", RUST),
+            ("C", "c", C_LANG),
             ("pandas", "python (pandas)", OPT_LIB),
+            ("manual", "python (manual)", NAIVE_PY),
+        ],
+        "ylabel": "seconds, incl. file read (mean of 7 trials)",
+    },
+    {
+        "key": "jsonparse",
+        "title": "E — JSON parsing",
+        "subtitle": "3M nested events, 327 MiB",
+        "bars": [
+            ("Mojo", "mojo", MOJO),
+            ("Rust", "rust", RUST),
+            ("C", "c", C_LANG),
+            ("json", "python (json)", OPT_LIB),
             ("manual", "python (manual)", NAIVE_PY),
         ],
         "ylabel": "seconds, incl. file read (mean of 7 trials)",
@@ -110,7 +130,8 @@ PANELS = [
 LEGEND_HANDLES = [
     plt.Rectangle((0, 0), 1, 1, color=MOJO, label="Mojo"),
     plt.Rectangle((0, 0), 1, 1, color=RUST, label="Rust (release build, std only)"),
-    plt.Rectangle((0, 0), 1, 1, color=OPT_LIB, label="Optimized C-backed library (NumPy / Counter / pandas)"),
+    plt.Rectangle((0, 0), 1, 1, color=C_LANG, label="C (-O3, std only)"),
+    plt.Rectangle((0, 0), 1, 1, color=OPT_LIB, label="Optimized library (NumPy/Counter/pandas/json)"),
     plt.Rectangle((0, 0), 1, 1, color=NAIVE_PY, label="Naive Python"),
 ]
 
@@ -148,9 +169,11 @@ def fmt_seconds(v):
 
 
 def make_absolute_chart():
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10.5))
-    fig.subplots_adjust(top=0.87, bottom=0.06, left=0.07, right=0.97,
-                         hspace=0.40, wspace=0.28)
+    fig, axes = plt.subplots(2, 3, figsize=(17.5, 11))
+    fig.subplots_adjust(top=0.83, bottom=0.06, left=0.05, right=0.98,
+                         hspace=0.42, wspace=0.30)
+    for extra_ax in axes.flat[len(PANELS):]:
+        extra_ax.axis("off")
 
     for ax, panel in zip(axes.flat, PANELS):
         data = RESULTS[panel["key"]]["variants"]
@@ -182,21 +205,21 @@ def make_absolute_chart():
         style_axes(ax)
 
     fig.suptitle(
-        "Mojo vs. Rust vs. Python vs. NumPy/pandas — mean wall-clock time, lower is better",
-        fontsize=15.5, fontweight="bold", color=TEXT_PRIMARY, x=0.015, y=0.975, ha="left",
+        "Mojo vs. Rust vs. C vs. Python vs. NumPy/pandas/json — mean wall-clock time, lower is better",
+        fontsize=15.5, fontweight="bold", color=TEXT_PRIMARY, x=0.012, y=0.985, ha="left",
     )
     fig.legend(
-        handles=LEGEND_HANDLES, loc="upper center", bbox_to_anchor=(0.5, 0.935),
-        ncol=2, frameon=False, fontsize=9.5,
+        handles=LEGEND_HANDLES, loc="upper center", bbox_to_anchor=(0.5, 0.945),
+        ncol=3, frameon=False, fontsize=9.5,
     )
     fig.savefig(OUT / "chart_absolute.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def make_speedup_chart():
-    fig, ax = plt.subplots(figsize=(13, 6.2))
-    fig.subplots_adjust(top=0.80, bottom=0.13, left=0.08, right=0.98)
-    group_gap = 1.0
+    fig, ax = plt.subplots(figsize=(16, 6.4))
+    fig.subplots_adjust(top=0.80, bottom=0.13, left=0.07, right=0.98)
+    group_gap = 1.35
     bar_width = 0.19
     centers = []
     labels = []
@@ -231,12 +254,12 @@ def make_speedup_chart():
     ax.yaxis.grid(True, which="both", color=GRIDLINE, linewidth=0.7, zorder=0)
 
     fig.suptitle(
-        "Same four categories, indexed to a common base — who wins each one",
+        "Same five categories, indexed to a common base — who wins each one",
         fontsize=14.5, fontweight="bold", color=TEXT_PRIMARY, x=0.015, y=0.97, ha="left",
     )
     fig.legend(
         handles=LEGEND_HANDLES, loc="upper center", bbox_to_anchor=(0.5, 0.885),
-        ncol=4, frameon=False, fontsize=9,
+        ncol=3, frameon=False, fontsize=9,
     )
     fig.savefig(OUT / "chart_speedup.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
@@ -246,42 +269,59 @@ def make_gpu_chart():
     gpu = RESULTS.get("mandelbrot_gpu")
     if gpu is None:
         return
-    fig, ax = plt.subplots(figsize=(8, 5.4))
-    fig.subplots_adjust(top=0.78, bottom=0.12, left=0.13, right=0.97)
 
-    sizes = gpu["sizes"]
-    xs = list(range(len(sizes)))
-    bar_width = 0.32
-    top = 0
-    for x, size in zip(xs, sizes):
-        cpu_v = size["cpu"]["mean"]
-        gpu_v = size["gpu"]["mean"]
-        rounded_bar(ax, x - bar_width / 2 - 0.02, cpu_v, bar_width, MOJO)
-        rounded_bar(ax, x + bar_width / 2 + 0.02, gpu_v, bar_width, OPT_LIB)
-        top = max(top, cpu_v, gpu_v)
-        ax.text(x - bar_width / 2 - 0.02, cpu_v + top * 0.03, fmt_seconds(cpu_v),
-                 ha="center", va="bottom", fontsize=9.5, color=TEXT_PRIMARY)
-        ax.text(x + bar_width / 2 + 0.02, gpu_v + top * 0.03,
-                 f"{fmt_seconds(gpu_v)}\n({cpu_v / gpu_v:.1f}x)",
-                 ha="center", va="bottom", fontsize=9.5, color=TEXT_PRIMARY, linespacing=1.3)
+    GPU_PANELS = [
+        ("mandelbrot_gpu", "A — Mandelbrot", "Float32 GPU vs Float64 CPU (disclosed precision gap)"),
+        ("sieve_gpu", "B — Sieve of Eratosthenes", "checksum-gated, exact match required"),
+        ("wordfreq_gpu", "C — Word frequency", "checksum-gated, exact match required"),
+        ("csvagg_gpu", "D — CSV aggregation", "checksum-gated, exact match required"),
+    ]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig.subplots_adjust(top=0.85, bottom=0.06, left=0.07, right=0.97,
+                         hspace=0.38, wspace=0.25)
 
-    ax.set_xticks(xs)
-    ax.set_xticklabels([s["label"] for s in sizes], fontsize=10)
-    ax.set_ylim(0, top * 1.32)
-    ax.set_xlim(-0.6, len(xs) - 0.4)
-    ax.set_ylabel("seconds, steady-state mean of 7 trials", fontsize=9.5, color=TEXT_SECONDARY)
-    style_axes(ax)
+    for ax, (key, title, subtitle) in zip(axes.flat, GPU_PANELS):
+        comp = RESULTS.get(key)
+        if comp is None:
+            ax.axis("off")
+            continue
+        sizes = comp["sizes"]
+        xs = list(range(len(sizes)))
+        bar_width = 0.32
+        top = 0
+        for x, size in zip(xs, sizes):
+            cpu_v = size["cpu"]["mean"]
+            gpu_v = size["gpu"]["mean"]
+            rounded_bar(ax, x - bar_width / 2 - 0.02, cpu_v, bar_width, MOJO)
+            rounded_bar(ax, x + bar_width / 2 + 0.02, gpu_v, bar_width, OPT_LIB)
+            top = max(top, cpu_v, gpu_v)
+            ax.text(x - bar_width / 2 - 0.02, cpu_v + top * 0.04, fmt_seconds(cpu_v),
+                     ha="center", va="bottom", fontsize=9, color=TEXT_PRIMARY)
+            if gpu_v < cpu_v:
+                tag = f"{fmt_seconds(gpu_v)}\n({cpu_v / gpu_v:.1f}x faster)"
+            else:
+                tag = f"{fmt_seconds(gpu_v)}\n({gpu_v / cpu_v:.1f}x slower)"
+            ax.text(x + bar_width / 2 + 0.02, gpu_v + top * 0.04, tag,
+                     ha="center", va="bottom", fontsize=9, color=TEXT_PRIMARY, linespacing=1.3)
+        ax.set_xticks(xs)
+        ax.set_xticklabels([s["label"] for s in sizes], fontsize=9.5)
+        ax.set_ylim(0, top * 1.38)
+        ax.set_xlim(-0.6, len(xs) - 0.4)
+        ax.set_title(f"{title}\n{subtitle}", fontsize=10.5, fontweight="bold",
+                      color=TEXT_PRIMARY, loc="left")
+        ax.set_ylabel("seconds, mean of 7 trials", fontsize=8.5, color=TEXT_SECONDARY)
+        style_axes(ax)
 
     handles = [
-        plt.Rectangle((0, 0), 1, 1, color=MOJO, label="Mojo — CPU/SIMD (Float64)"),
-        plt.Rectangle((0, 0), 1, 1, color=OPT_LIB, label="Mojo — GPU/MAX, Apple Metal (Float32)"),
+        plt.Rectangle((0, 0), 1, 1, color=MOJO, label="Mojo — CPU/SIMD"),
+        plt.Rectangle((0, 0), 1, 1, color=OPT_LIB, label="Mojo — GPU/MAX, Apple Metal"),
     ]
     fig.suptitle(
-        "Mandelbrot: CPU/SIMD vs. GPU, same Mojo toolchain",
-        fontsize=14, fontweight="bold", color=TEXT_PRIMARY, x=0.015, y=0.975, ha="left",
+        "CPU/SIMD vs. GPU, same Mojo toolchain — four categories, one clear win",
+        fontsize=15, fontweight="bold", color=TEXT_PRIMARY, x=0.012, y=0.97, ha="left",
     )
-    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.905),
-               ncol=1, frameon=False, fontsize=9.5)
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.925),
+               ncol=2, frameon=False, fontsize=9.5)
     fig.savefig(OUT / "chart_gpu.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 

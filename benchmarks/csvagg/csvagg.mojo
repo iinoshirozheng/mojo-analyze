@@ -15,6 +15,10 @@ def parse_csv_arg() -> String:
 comptime COMMA: UInt8 = 44
 comptime DIGIT_0: UInt8 = 48
 comptime DIGIT_9: UInt8 = 57
+comptime FNV_OFFSET: UInt64 = 14695981039346656037
+comptime FNV_PRIME: UInt64 = 1099511628211
+comptime CAPACITY = 1024
+comptime MASK = CAPACITY - 1
 
 
 def main() raises:
@@ -26,7 +30,19 @@ def main() raises:
     var data = text.as_bytes()
     var n = len(data)
 
-    var revenue_by_category = Dict[String, Int]()
+    # Byte-span open-addressing hash table keyed by the category field's raw
+    # (start, end) offsets into `data` — no per-row String allocation. This
+    # is the same fix that already took wordfreq.mojo from 2.15s (slowest of
+    # three) to 0.298s (fastest of three): `Dict[String, Int]` needed a fresh
+    # String built from `category_bytes` on every one of 10M rows just to use
+    # as a lookup key. Hashing/comparing the category's raw bytes in place
+    # skips that entirely — a String is only ever built for the <=99 *unique*
+    # categories, in the small summary loop at the end, not in the hot loop.
+    var slot_used = List[Bool](length=CAPACITY, fill=False)
+    var slot_hash = List[UInt64](length=CAPACITY, fill=0)
+    var slot_start = List[Int](length=CAPACITY, fill=0)
+    var slot_end = List[Int](length=CAPACITY, fill=0)
+    var slot_revenue = List[Int](length=CAPACITY, fill=0)
     var total_rows = 0
 
     # Skip the header line.
@@ -35,24 +51,18 @@ def main() raises:
         i += 1
     i += 1
 
-    var category_bytes = List[UInt8]()
     while i < n:
         # Field 0: order_id — unused, skip to the next comma.
         while i < n and data[i] != COMMA:
             i += 1
         i += 1
 
-        # Field 1: category — the only field that needs to become a String
-        # (it's the Dict key); everything else is parsed straight from bytes
-        # with zero allocation, unlike the first version of this file, which
-        # built a `List[String]` of all four fields per row (10M rows) even
-        # though three of them were immediately discarded or parsed back to
-        # Int — the same allocation-per-row mistake the original wordfreq.mojo
-        # made, caught the same way: it was ~14x slower than Rust until fixed.
-        category_bytes.clear()
+        # Field 1: category — captured as a (start, end) byte span. Never
+        # copied into a buffer, never turned into a String, in this loop.
+        var cat_start = i
         while i < n and data[i] != COMMA:
-            category_bytes.append(data[i])
             i += 1
+        var cat_end = i
         i += 1
 
         # Field 2: quantity — parse digits directly, no String.
@@ -72,25 +82,63 @@ def main() raises:
         i += 1
 
         var revenue = quantity * price_cents
-        var category = String(unsafe_from_utf8=Span(category_bytes))
+        var span_len = cat_end - cat_start
 
-        if category in revenue_by_category:
-            revenue_by_category[category] = revenue_by_category[category] + revenue
-        else:
-            revenue_by_category[category] = revenue
+        var h: UInt64 = FNV_OFFSET
+        var k = cat_start
+        while k < cat_end:
+            h = h ^ UInt64(data[k])
+            h = h * FNV_PRIME
+            k += 1
+
+        var slot = Int(h) & MASK
+        while True:
+            if not slot_used[slot]:
+                slot_used[slot] = True
+                slot_hash[slot] = h
+                slot_start[slot] = cat_start
+                slot_end[slot] = cat_end
+                slot_revenue[slot] = 0
+                break
+
+            var matches = False
+            if slot_hash[slot] == h and (slot_end[slot] - slot_start[slot]) == span_len:
+                matches = True
+                var j = 0
+                while j < span_len:
+                    if data[slot_start[slot] + j] != data[cat_start + j]:
+                        matches = False
+                        break
+                    j += 1
+
+            if matches:
+                break
+            slot = (slot + 1) & MASK
+
+        slot_revenue[slot] = slot_revenue[slot] + revenue
         total_rows += 1
 
-    var unique_categories = len(revenue_by_category)
-
+    var unique_categories = 0
     var top_category = ""
     var top_revenue = Int64(-1)
     var have_top = False
-    for entry in revenue_by_category.items():
-        var rev = Int64(entry.value)
-        if not have_top or rev > top_revenue or (rev == top_revenue and entry.key < top_category):
-            top_category = entry.key
-            top_revenue = rev
-            have_top = True
+
+    var s = 0
+    while s < CAPACITY:
+        if slot_used[s]:
+            unique_categories += 1
+            var buf = List[UInt8]()
+            var p = slot_start[s]
+            while p < slot_end[s]:
+                buf.append(data[p])
+                p += 1
+            var category = String(unsafe_from_utf8=Span(buf))
+            var rev = Int64(slot_revenue[s])
+            if not have_top or rev > top_revenue or (rev == top_revenue and category < top_category):
+                top_category = category
+                top_revenue = rev
+                have_top = True
+        s += 1
 
     var elapsed_ns = perf_counter_ns() - start_time
     var elapsed = Float64(elapsed_ns) / 1_000_000_000.0
