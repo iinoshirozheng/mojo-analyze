@@ -45,7 +45,7 @@ the up-to-date standings.)*
 | B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd, 1.05x behind — *previously lost to NumPy, see analysis* |
 | C — real-world string/hash | Word-frequency count | **C** | 2nd, 1.6x behind — *previously lost to `Counter`, see analysis* |
 | D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd, 2.3x behind |
-| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd, 3.0x behind |
+| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd, 2.3x behind — *profiled, `@always_inline` closed ~24% of the gap, see analysis* |
 
 Mojo wins outright only where its SIMD API gets real work to do
 (Mandelbrot). Everywhere else, C's decades-mature compiler and total

@@ -7,8 +7,14 @@ language here." **C wins four of the five categories.** Mojo wins the one
 category built for it (SIMD-dense numerics) and is usually a close 2nd or
 3rd elsewhere. Two categories tell a before/after story: the first Mojo
 implementation *lost*, the root cause was found, and a disclosed rewrite
-turned that loss into a near-tie with C. The point of this repo is the
-reasoning behind each result, not a scoreboard with one hero language.
+turned that loss into a near-tie with C. A third category (E) got the same
+profile-first treatment — the fix this time was real (~24% faster,
+confirmed by inspecting the compiled binary, not just theorized) but didn't
+flip the ranking, and *that itself* is a finding: not every gap is the same
+kind of gap, and this repo tries to show which kind each one actually is
+rather than reach for the same explanation every time. The point of this
+repo is the reasoning behind each result, not a scoreboard with one hero
+language.
 
 **Every number below comes from an actual run on real hardware** (see
 [Methodology](#methodology)) with correctness enforced by checksum
@@ -24,7 +30,7 @@ benchmark produced byte-identical output first. Raw per-trial data lives in
 | B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd — 1.05x behind C, 1.14x ahead of Rust *(previously lost to NumPy — see below)* |
 | C — real-world string/hash | Word-frequency count | **C** | 2nd — 1.6x behind C, 1.5x ahead of Rust *(previously lost to `Counter` — see below)* |
 | D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd — 2.3x behind C, narrowly ahead of Rust |
-| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd — 3.0x behind C, behind Rust too |
+| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd — 2.3x behind C, 1.5x behind Rust *(profiled and partly fixed — see below)* |
 
 ![Who leads each category, and by how much](results/lieflat/chart_margin_overview.png)
 
@@ -194,11 +200,11 @@ every pixel's escape-iteration count.
 
 | Variant | Mean | Stdev | vs. Mojo |
 |---|---:|---:|---:|
-| Mojo (SIMD) | 0.0551 s | 0.0004 s | 1.0x |
-| C (`-O3`, scalar) | 0.0899 s | 0.0016 s | 1.6x slower |
-| Rust (scalar, release) | 0.1121 s | 0.0012 s | 2.0x slower |
-| NumPy | 0.7175 s | 0.0177 s | 13.0x slower |
-| Python (pure) | 2.5207 s | 0.0328 s | 45.8x slower |
+| Mojo (SIMD) | 0.0554 s | 0.0002 s | 1.0x |
+| C (`-O3`, scalar) | 0.0904 s | 0.0019 s | 1.6x slower |
+| Rust (scalar, release) | 0.1114 s | 0.0007 s | 2.0x slower |
+| NumPy | 0.7047 s | 0.0102 s | 12.7x slower |
+| Python (pure) | 2.4526 s | 0.0221 s | 44.3x slower |
 
 | Variant | Package / library | Technique |
 |---|---|---|
@@ -258,11 +264,11 @@ raw loop/memory-access speed *without* SIMD doing the work.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (`-O3`, idiomatic) | 0.1135 s | 0.0029 s | 1.0x |
-| Mojo (raw pointer) | 0.1192 s | 0.0037 s | 1.05x slower |
-| Rust (`Vec<bool>`, release) | 0.1363 s | 0.0023 s | 1.20x slower |
-| NumPy (vectorized slice) | 0.1419 s | 0.0016 s | 1.25x slower |
-| Python (pure, bytearray) | 2.1679 s | 0.0205 s | 19.1x slower |
+| C (`-O3`, idiomatic) | 0.1177 s | 0.0042 s | 1.0x |
+| Mojo (raw pointer) | 0.1245 s | 0.0038 s | 1.06x slower |
+| Rust (`Vec<bool>`, release) | 0.1421 s | 0.0041 s | 1.21x slower |
+| NumPy (vectorized slice) | 0.1484 s | 0.0057 s | 1.26x slower |
+| Python (pure, bytearray) | 2.1886 s | 0.0362 s | 18.6x slower |
 
 | Variant | Package / library | Technique |
 |---|---|---|
@@ -331,11 +337,11 @@ why the corpus is synthetic.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (byte-span hash table) | 0.1910 s | 0.0088 s | 1.0x |
-| Mojo (byte-span hash table) | 0.3050 s | 0.0012 s | 1.6x slower |
-| Rust (`HashMap<Vec<u8>,u64>`) | 0.4749 s | 0.0069 s | 2.5x slower |
-| Python (`collections.Counter`) | 1.7684 s | 0.0238 s | 9.3x slower |
-| Python (manual `dict`) | 1.9882 s | 0.0181 s | 10.4x slower |
+| C (byte-span hash table) | 0.1899 s | 0.0029 s | 1.0x |
+| Mojo (byte-span hash table) | 0.3132 s | 0.0050 s | 1.6x slower |
+| Rust (`HashMap<Vec<u8>,u64>`) | 0.4808 s | 0.0081 s | 2.5x slower |
+| Python (`collections.Counter`) | 1.7806 s | 0.0204 s | 9.4x slower |
+| Python (manual `dict`) | 2.0303 s | 0.0239 s | 10.7x slower |
 
 | Variant | Package / library | Technique |
 |---|---|---|
@@ -409,11 +415,11 @@ Timing includes the file read.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (byte-span hash table) | 0.2932 s | 0.0160 s | 1.0x |
-| Mojo (byte-span hash table) | 0.6623 s | 0.0220 s | 2.3x slower |
-| Rust (`HashMap<&str, i64>`) | 0.6906 s | 0.0090 s | 2.4x slower |
-| Python (pandas) | 1.8732 s | 0.0279 s | 6.4x slower |
-| Python (manual, `csv` module) | 3.2417 s | 0.0356 s | 11.1x slower |
+| C (byte-span hash table) | 0.2906 s | 0.0051 s | 1.0x |
+| Mojo (byte-span hash table) | 0.6590 s | 0.0119 s | 2.3x slower |
+| Rust (`HashMap<&str, i64>`) | 0.6958 s | 0.0099 s | 2.4x slower |
+| Python (pandas) | 1.9098 s | 0.0156 s | 6.6x slower |
+| Python (manual, `csv` module) | 3.2928 s | 0.0163 s | 11.3x slower |
 
 | Variant | Package / library | Technique |
 |---|---|---|
@@ -436,7 +442,7 @@ same technique its own word-frequency variant used in category C** — this
 Rust variant fixes the allocation handicap but still carries the SipHash
 one). C, with the same technique and the same zero-allocation static-array
 construction described in category C above, is again the clear leader —
-2.3-2.4x ahead of both Mojo and Rust, which land within 4% of each other.
+2.3-2.4x ahead of both Mojo and Rust, which land within 6% of each other.
 **Worth noting plainly: Rust's two hash-table variants in this repo (C and
 D) aren't equally handicapped relative to Mojo/C** — that inconsistency is
 between Rust's own implementations, not just between Rust and everyone
@@ -454,11 +460,11 @@ amounts only, same reasoning as category D. Timing includes the file read.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (scanning parser) | 0.2903 s | 0.0047 s | 1.0x |
-| Rust (scanning parser) | 0.4351 s | 0.0032 s | 1.5x slower |
-| Mojo (scanning parser) | 0.8662 s | 0.0101 s | 3.0x slower |
-| Python (`json` stdlib) | 2.5887 s | 0.0195 s | 8.9x slower |
-| Python (manual, hand-rolled) | 19.7561 s | 1.9799 s | 68.1x slower |
+| C (scanning parser) | 0.2900 s | 0.0070 s | 1.0x |
+| Rust (scanning parser) | 0.4365 s | 0.0100 s | 1.5x slower |
+| Mojo (scanning parser, `@always_inline`) | 0.6659 s | 0.0086 s | 2.3x slower |
+| Python (`json` stdlib) | 2.6423 s | 0.0496 s | 9.1x slower |
+| Python (manual, hand-rolled) | 19.9423 s | 0.8918 s | 68.8x slower |
 
 | Variant | Package / library | Technique |
 |---|---|---|
@@ -472,19 +478,55 @@ amounts only, same reasoning as category D. Timing includes the file read.
 "all three systems languages use the byte-span hash table."** Only Mojo and
 C do — Rust's grouping step uses `std::collections::HashMap<&str, i64>`,
 the same choice it made in category D, not the byte-span technique. That
-matters for what this result actually shows: **the parser (not the hash
-table) is the more likely place to look for Mojo's gap.** If Mojo's
-slowness here were mainly hash-table overhead, Rust — using a *plain* std
-HashMap that isn't even byte-span-optimized — would be expected to lose
-that comparison too, not win it by ~2x over Mojo. Rust's zero-copy-key
-`HashMap` beating Mojo's purpose-built byte-span table is itself informative:
-it suggests category E's bottleneck sits in the **scanning/parsing loop
-itself** (function-call overhead per `skip_value`/`skip_string` call,
-`Tuple` returns, `Span` slicing) rather than in aggregation — the opposite
-conclusion from category C, where the hash table specifically was the
-identified cost. This is left as a hypothesis, not confirmed by profiling;
-it's the natural next thing to check before category E gets its own
-raw-pointer rewrite attempt.
+pointed at the **parser**, not the hash table, as the likely place to look
+for Mojo's gap: if hash-table overhead were the main cost, Rust — using a
+*plain* std HashMap that isn't even byte-span-optimized — should have lost
+that comparison too, not won it by ~2x.
+
+**That hypothesis was profiled, not just asserted — three isolated
+experiments, in order:**
+
+1. **`@always_inline` on the five scanning helpers** (`skip_ws`,
+   `skip_string`, `skip_value`, `parse_key`, `key_is`) — a real, measured
+   ~24% win (0.87s -> 0.66s mean, both over 7 trials, checksum unchanged).
+   Confirmed this is genuine inlining, not a no-op: `mojo build --emit asm`
+   on the compiled binary shows **zero call instructions to any of those
+   five functions** — they're fully folded into `main`. This fix is applied
+   to `jsonparse.mojo` (the numbers in the table above already reflect it).
+2. **Raw-pointer access** (`Pointer[UInt8, _]` instead of `Span[UInt8, _]`,
+   the same fix that was the *dominant* cause in categories B and C) —
+   tested on top of (1) and found to change nothing measurable here (still
+   ~0.65-0.70s). Also applied to the shipped file for consistency with the
+   rest of this repo's "no bounds-checked collection in the hot byte loop"
+   convention, but it is not why category E is slow.
+3. **Removing the hash table entirely** (replacing the FNV-1a hash +
+   open-addressing insert with a single cheap XOR sink, so the compiler
+   can't dead-code-eliminate the scan) — saved only ~5-8% of total time.
+   The hash table was never the bottleneck here, unlike category C.
+
+**Conclusion: the scanning/parsing loop itself is where essentially all of
+category E's remaining time goes**, and after the one fix that *is*
+available (inlining) is applied, what's left is closer to a genuine
+compiler-codegen gap than a fixable Mojo idiom. This lines up with published
+results on JSON parsers generally: the [simdjson](https://github.com/simdjson/simdjson)
+project exists specifically because even mature, well-tuned *scalar*
+C++ parsers pay a real instruction-per-byte cost that only a SIMD
+structural-index pass (finding all `{}[]:,"` delimiters across a 64-byte
+block in one pass, before any branchy per-token dispatch) removes —
+simdjson's own measurements put it at roughly [4x fewer instructions than
+RapidJSON and 2x fewer than sajson](https://www.researchgate.net/figure/Speed-of-the-three-parsers-simdjson-RapidJSON-and-sajson-while-parsing-our-different_fig9_336443260),
+two parsers already considered fast, branchless, single-pass C++. A
+byte-at-a-time scanning parser branching on `{`, `[`, `"`, digit, or
+whitespace at every position — which is what all three systems-language
+variants in this repository do — is inherently more instruction-dense per
+byte than Sieve's simple linear marking loop or word-frequency's
+whitespace/punctuation split, so it's not surprising this is the one
+category where matching Mojo's *technique* to C's (inlining, raw pointers)
+didn't close the gap the way it did in B and C. A real further win here
+would mean changing the *algorithm* — structural pre-indexing, fewer
+branches per byte, ultimately SIMD — not just tuning the current one, and
+is left as an open, disclosed direction rather than attempted under this
+round's scope.
 
 #### About the synthetic data (corpus, CSV, and JSON events)
 

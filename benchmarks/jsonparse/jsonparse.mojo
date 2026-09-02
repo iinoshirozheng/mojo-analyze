@@ -8,6 +8,25 @@
 # already learned twice (word-freq, CSV agg): no per-event String
 # allocation for the `type` field in the hot loop -- byte-span hash table,
 # same technique as benchmarks/wordfreq/wordfreq.mojo.
+#
+# Empirically profiled (see ANALYSIS.md's category-E section) rather than
+# left as a guess: `@always_inline` on the five scanning helpers below is a
+# real, measured ~20-25% win (confirmed via `mojo build --emit asm` -- zero
+# `call` instructions to these functions remain in the compiled binary, so
+# this genuinely is full inlining, not a compiler no-op). Raw-pointer
+# access (`Pointer[UInt8, _]` instead of `Span[UInt8, _]`) on top of that
+# was tested and found NOT to matter here (unlike sieve.mojo/wordfreq.mojo,
+# where it was the dominant fix) -- kept anyway for consistency with the
+# rest of this repo's "no bounds-checked collection in the hot loop"
+# convention, at no measured cost. The hash table itself was also profiled
+# out as a candidate cause (removing it entirely saves only ~5-8% of total
+# time) -- the scanning loop itself, not the hash table, is where the
+# remaining gap to Rust/C lives; seven searchable structural characters and
+# a branch per byte is inherently more instruction-dense than a
+# whitespace/comma split, and simdjson's whole reason for existing is that
+# even well-tuned scalar/branchless JSON parsers (RapidJSON, sajson) still
+# spend meaningfully more instructions per byte than a SIMD structural-index
+# pass -- see ANALYSIS.md for the full writeup and citations.
 from std.sys import argv
 from std.time import perf_counter_ns
 
@@ -27,28 +46,30 @@ def parse_json_arg() -> String:
     return "benchmarks/jsonparse/data/events.json"
 
 
-def skip_ws(data: Span[UInt8, _], pos: Int) -> Int:
+@always_inline
+def skip_ws(data: Pointer[UInt8, _], n: Int, pos: Int) -> Int:
     var i = pos
-    var n = len(data)
-    while i < n and (data[i] == 32 or data[i] == 9 or data[i] == 10 or data[i] == 13):
+    while i < n and (data[unsafe_offset=i] == 32 or data[unsafe_offset=i] == 9 or data[unsafe_offset=i] == 10 or data[unsafe_offset=i] == 13):
         i += 1
     return i
 
 
-def skip_string(data: Span[UInt8, _], pos: Int) -> Int:
+@always_inline
+def skip_string(data: Pointer[UInt8, _], pos: Int) -> Int:
     # pos points at the opening '"'.
     var i = pos + 1
-    while data[i] != 34:  # '"'
-        if data[i] == 92:  # '\\'
+    while data[unsafe_offset=i] != 34:  # '"'
+        if data[unsafe_offset=i] == 92:  # '\\'
             i += 2
         else:
             i += 1
     return i + 1
 
 
-def skip_value(data: Span[UInt8, _], pos: Int) -> Int:
-    var i = skip_ws(data, pos)
-    var c = data[i]
+@always_inline
+def skip_value(data: Pointer[UInt8, _], n: Int, pos: Int) -> Int:
+    var i = skip_ws(data, n, pos)
+    var c = data[unsafe_offset=i]
     if c == 34:  # '"'
         return skip_string(data, i)
     if c == 123 or c == 91:  # '{' or '['
@@ -57,7 +78,7 @@ def skip_value(data: Span[UInt8, _], pos: Int) -> Int:
         var depth = 1
         i += 1
         while depth > 0:
-            var ch = data[i]
+            var ch = data[unsafe_offset=i]
             if ch == 34:
                 i = skip_string(data, i)
                 continue
@@ -68,30 +89,32 @@ def skip_value(data: Span[UInt8, _], pos: Int) -> Int:
             i += 1
         return i
     # number (int, possibly negative)
-    if data[i] == 45:  # '-'
+    if data[unsafe_offset=i] == 45:  # '-'
         i += 1
-    while i < len(data) and data[i] >= 48 and data[i] <= 57:
+    while i < n and data[unsafe_offset=i] >= 48 and data[unsafe_offset=i] <= 57:
         i += 1
     return i
 
 
-def parse_key(data: Span[UInt8, _], pos: Int) -> Tuple[Int, Int, Int]:
+@always_inline
+def parse_key(data: Pointer[UInt8, _], n: Int, pos: Int) -> Tuple[Int, Int, Int]:
     # pos points at the opening '"' of a key. Returns (key_start, key_end, pos_after_colon).
     var key_start = pos + 1
     var end = skip_string(data, pos)
     var key_end = end - 1
-    var i = skip_ws(data, end)
+    var i = skip_ws(data, n, end)
     i += 1  # ':'
     return (key_start, key_end, i)
 
 
-def key_is(data: Span[UInt8, _], start: Int, end: Int, target: String) -> Bool:
+@always_inline
+def key_is(data: Pointer[UInt8, _], start: Int, end: Int, target: StaticString) -> Bool:
     var tb = target.as_bytes()
     if end - start != len(tb):
         return False
     var i = 0
     while i < end - start:
-        if data[start + i] != tb[i]:
+        if data[unsafe_offset=start + i] != tb[i]:
             return False
         i += 1
     return True
@@ -103,7 +126,8 @@ def main() raises:
     var start = perf_counter_ns()
 
     var text = open(json_path, "r").read()
-    var data = text.as_bytes()
+    var n = text.byte_length()
+    var data = text.unsafe_ptr()
 
     var slot_used = List[Bool](length=CAPACITY, fill=False)
     var slot_hash = List[UInt64](length=CAPACITY, fill=0)
@@ -112,25 +136,25 @@ def main() raises:
     var slot_revenue = List[Int64](length=CAPACITY, fill=0)
     var total_events = 0
 
-    var i = skip_ws(data, 0)
+    var i = skip_ws(data, n, 0)
     i += 1  # '['
-    i = skip_ws(data, i)
-    if data[i] == 93:  # empty array ']'
+    i = skip_ws(data, n, i)
+    if data[unsafe_offset=i] == 93:  # empty array ']'
         i += 1
     else:
         while True:
-            i = skip_ws(data, i)
+            i = skip_ws(data, n, i)
             i += 1  # '{'
             var type_start = -1
             var type_end = -1
             var amount_cents: Int64 = 0
 
-            i = skip_ws(data, i)
-            while data[i] != 125:  # '}'
-                var kr = parse_key(data, i)
+            i = skip_ws(data, n, i)
+            while data[unsafe_offset=i] != 125:  # '}'
+                var kr = parse_key(data, n, i)
                 var key_start = kr[0]
                 var key_end = kr[1]
-                var vpos = skip_ws(data, kr[2])
+                var vpos = skip_ws(data, n, kr[2])
 
                 if key_is(data, key_start, key_end, "type"):
                     type_start = vpos + 1
@@ -139,25 +163,25 @@ def main() raises:
                     i = vend
                 elif key_is(data, key_start, key_end, "amount_cents"):
                     var num_start = vpos
-                    var vend = skip_value(data, vpos)
+                    var vend = skip_value(data, n, vpos)
                     var val: Int64 = 0
                     var neg = False
                     var k = num_start
-                    if data[k] == 45:
+                    if data[unsafe_offset=k] == 45:
                         neg = True
                         k += 1
                     while k < vend:
-                        val = val * 10 + Int64(data[k] - 48)
+                        val = val * 10 + Int64(data[unsafe_offset=k] - 48)
                         k += 1
                     amount_cents = -val if neg else val
                     i = vend
                 else:
-                    i = skip_value(data, vpos)
+                    i = skip_value(data, n, vpos)
 
-                i = skip_ws(data, i)
-                if data[i] == 44:  # ','
+                i = skip_ws(data, n, i)
+                if data[unsafe_offset=i] == 44:  # ','
                     i += 1
-                    i = skip_ws(data, i)
+                    i = skip_ws(data, n, i)
             i += 1  # '}'
 
             # type_start/type_end are always set: every event in this
@@ -166,7 +190,7 @@ def main() raises:
             var h: UInt64 = FNV_OFFSET
             var kk = type_start
             while kk < type_end:
-                h = h ^ UInt64(data[kk])
+                h = h ^ UInt64(data[unsafe_offset=kk])
                 h = h * FNV_PRIME
                 kk += 1
 
@@ -184,7 +208,7 @@ def main() raises:
                     matches = True
                     var j = 0
                     while j < span_len:
-                        if data[slot_start[slot] + j] != data[type_start + j]:
+                        if data[unsafe_offset=slot_start[slot] + j] != data[unsafe_offset=type_start + j]:
                             matches = False
                             break
                         j += 1
@@ -195,8 +219,8 @@ def main() raises:
             slot_revenue[slot] = slot_revenue[slot] + amount_cents
             total_events += 1
 
-            i = skip_ws(data, i)
-            if data[i] == 44:  # ',' -- another event
+            i = skip_ws(data, n, i)
+            if data[unsafe_offset=i] == 44:  # ',' -- another event
                 i += 1
             else:
                 i += 1  # ']'
@@ -214,7 +238,7 @@ def main() raises:
             var buf = List[UInt8]()
             var p = slot_start[s]
             while p < slot_end[s]:
-                buf.append(data[p])
+                buf.append(data[unsafe_offset=p])
                 p += 1
             var etype = String(unsafe_from_utf8=Span(buf))
             if not have_top or rev > top_revenue or (rev == top_revenue and etype < top_type):

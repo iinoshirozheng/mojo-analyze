@@ -283,7 +283,15 @@ def main():
     only = set(args.only.split(",")) if args.only else None
     benchmarks = [b for b in BENCHMARKS if only is None or b["name"] in only]
 
-    results = {}
+    # A partial (--only) run must not wipe out other categories already in
+    # results.json -- merge into whatever's there instead of starting fresh.
+    # A full run (no --only) starts clean, since it's meant to be the
+    # canonical, complete snapshot.
+    out_path = ROOT / "results" / "results.json"
+    if only is not None and out_path.exists():
+        results = json.loads(out_path.read_text())
+    else:
+        results = {}
     for bench in benchmarks:
         print(f"\n=== {bench['name']} ({bench['category']}) ===")
         bench_checksums = {}
@@ -311,7 +319,6 @@ def main():
             "variants": bench_results,
         }
 
-    out_path = ROOT / "results" / "results.json"
     out_path.parent.mkdir(exist_ok=True)
     out_path.write_text(json.dumps(results, indent=2))
     print(f"\nWrote {out_path}")

@@ -91,12 +91,18 @@ trick rather than an exemption — see its header comment).
   still paying `List`'s bounds-check overhead per hash-table probe — the
   same mechanism category B's raw-pointer sieve rewrite eliminated.
   Applying that fix to categories C and D (both share the identical
-  hash-table pattern) would directly test that hypothesis. **Category E is
-  a different story, not the same follow-up**: Rust's JSON variant doesn't
-  even use a byte-span hash table there (plain `std::HashMap<&str,i64>`)
-  and still beats Mojo by ~2x, which points at the *parser* (`skip_value`/
-  `skip_string` recursion, `Span` handling), not the hash table — profile
-  that before assuming the same fix applies.
+  hash-table pattern) would directly test that hypothesis. **Category E
+  was a different story, and it's now been profiled, not just guessed
+  at** (see `ANALYSIS.md`'s category-E section): `@always_inline` on the
+  scanning helpers was a real, confirmed ~24% win (verified via
+  `mojo build --emit asm` — zero calls to those functions remain), but
+  removing the hash table entirely only saved ~5-8% of total time, so the
+  scanning loop itself — not the hash table, and not un-inlined function
+  calls — is genuinely where the remaining 2.2x-behind-C gap lives. A
+  further win here isn't a small tuning fix; it needs a different
+  *algorithm* (structural pre-indexing / fewer branches per byte,
+  ultimately SIMD, the way simdjson does it) — open, not attempted in this
+  round.
 - **Give Rust's hash-table variants a fair non-cryptographic-hasher
   comparison.** Every Rust variant in this repo uses
   `std::collections::HashMap`'s default hasher, SipHash — deliberately
