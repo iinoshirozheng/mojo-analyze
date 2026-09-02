@@ -33,9 +33,9 @@ each into the fastest implementation in the suite.
 | Category | Task | Winner | Mojo vs. fastest other |
 |---|---|---|---|
 | A — SIMD-friendly | Mandelbrot render | **Mojo** | fastest — 2.0x faster than Rust |
-| B — memory/branch-bound | Sieve of Eratosthenes | **Mojo** | fastest — 1.15x faster than Rust *(previously lost to NumPy — see analysis)* |
+| B — memory/branch-bound | Sieve of Eratosthenes | **Mojo** | fastest — 1.14x faster than Rust *(previously lost to NumPy — see analysis)* |
 | C — real-world string/hash | Word-frequency count | **Mojo** | fastest — 1.5x faster than Rust *(previously lost to `Counter` — see analysis)* |
-| D — real-world tabular agg. | CSV group-by + sum | **Rust** | Mojo is 1.2x slower, but beats pandas by 2.3x |
+| D — real-world tabular agg. | CSV group-by + sum | **Rust** | Mojo is 1.2x slower, but beats pandas by 2.7x |
 
 Mojo wins three of four categories, including two it initially *lost* — the
 full write-up covers both the losing first attempt and the specific,

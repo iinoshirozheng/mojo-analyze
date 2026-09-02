@@ -83,10 +83,13 @@ concrete hardware reason.
   sort/dedup benchmark are open candidates.
 - GPU implementations of the other three CPU benchmarks (sieve, word-freq,
   CSV agg), for comparison against `mandelbrot_gpu.mojo`'s pattern.
-- Now that Linux CI (`.github/workflows/benchmark.yml`) is live, watch its
-  results for a few runs and fold a real cross-architecture comparison
-  into `ANALYSIS.md` once there's enough Linux data to trust — right now
-  it runs but isn't yet summarized in the doc.
+- Linux CI (`.github/workflows/benchmark.yml`) is live and its first run is
+  now summarized in `ANALYSIS.md`'s [Cross-platform](ANALYSIS.md#cross-platform-what-linux-ci-actually-shows)
+  section — but that's one run at 3 trials on shared runners. Category B's
+  ranking flip on Linux arm64 (NumPy edges Mojo back out there, unlike
+  macOS arm64 and Linux x86_64) is flagged as unresolved; a few more CI
+  runs, or real (non-shared) arm64 Linux hardware, would help tell a real
+  effect apart from one noisy run.
 
 ## Reporting issues
 

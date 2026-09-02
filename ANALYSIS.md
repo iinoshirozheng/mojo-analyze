@@ -19,9 +19,9 @@ produced byte-identical output first. Raw per-trial data lives in
 
 | Category | Task | Winner | Mojo vs. fastest other |
 |---|---|---|---|
-| A — SIMD-friendly | Mandelbrot render | **Mojo** | fastest — 2.0x faster than Rust, 12.7x faster than NumPy |
-| B — memory/branch-bound | Sieve of Eratosthenes | **Mojo** | fastest — 1.15x faster than Rust, 1.23x faster than NumPy *(previously lost to NumPy — see below)* |
-| C — real-world string/hash | Word-frequency count | **Mojo** | fastest — 1.5x faster than Rust, 5.6x faster than Python `Counter` *(previously lost to Counter — see below)* |
+| A — SIMD-friendly | Mandelbrot render | **Mojo** | fastest — 2.0x faster than Rust, 12.4x faster than NumPy |
+| B — memory/branch-bound | Sieve of Eratosthenes | **Mojo** | fastest — 1.14x faster than Rust, 1.17x faster than NumPy *(previously lost to NumPy — see below)* |
+| C — real-world string/hash | Word-frequency count | **Mojo** | fastest — 1.5x faster than Rust, 5.7x faster than Python `Counter` *(previously lost to Counter — see below)* |
 | D — real-world tabular agg. | CSV group-by + sum | **Rust** | Mojo is 1.2x slower than Rust, but beats pandas by 2.3x |
 
 ![Same four categories, indexed to a common base — who wins each one](results/chart_speedup.png)
@@ -139,10 +139,10 @@ pixel's escape-iteration count.
 
 | Variant | Mean | Stdev | vs. Mojo |
 |---|---:|---:|---:|
-| Mojo (SIMD) | 0.0541 s | 0.0010 s | 1.0x |
-| Rust (scalar, release) | 0.1091 s | 0.0014 s | 2.0x slower |
-| NumPy | 0.6881 s | 0.0145 s | 12.7x slower |
-| Python (pure) | 2.3380 s | 0.0092 s | 43.2x slower |
+| Mojo (SIMD) | 0.0549 s | 0.0006 s | 1.0x |
+| Rust (scalar, release) | 0.1088 s | 0.0007 s | 2.0x slower |
+| NumPy | 0.6816 s | 0.0082 s | 12.4x slower |
+| Python (pure) | 2.3571 s | 0.0387 s | 42.9x slower |
 
 This is the category Mojo was built for: every pixel is an independent,
 branch-light arithmetic loop, and Mojo's SIMD API lets the compiled binary
@@ -184,10 +184,10 @@ marking pattern is inherently sequential and hard to vectorize by hand.
 
 | Variant | Mean | Stdev | vs. Mojo |
 |---|---:|---:|---:|
-| Mojo (raw pointer) | 0.1181 s | 0.0040 s | 1.0x |
-| Rust (`Vec<bool>`, release) | 0.1354 s | 0.0038 s | 1.15x slower |
-| NumPy (vectorized slice) | 0.1452 s | 0.0023 s | 1.23x slower |
-| Python (pure, bytearray) | 1.9957 s | 0.0081 s | 16.9x slower |
+| Mojo (raw pointer) | 0.1208 s | 0.0032 s | 1.0x |
+| Rust (`Vec<bool>`, release) | 0.1373 s | 0.0057 s | 1.14x slower |
+| NumPy (vectorized slice) | 0.1419 s | 0.0056 s | 1.17x slower |
+| Python (pure, bytearray) | 2.0046 s | 0.0167 s | 16.6x slower |
 
 **This category flipped completely during the writing of this repo, and
 both versions are worth understanding.**
@@ -204,7 +204,7 @@ bounds-checked indexing on every single store in the hot loop.
 
 **Second attempt** replaced `List[UInt8]` with a raw-pointer allocation
 (`alloc[UInt8](n)`, indexed via `p[unsafe_offset=i]`, freed with
-`.unsafe_free()`) specifically to skip that bounds check. Result: **0.118s
+`.unsafe_free()`) specifically to skip that bounds check. Result: **0.121s
 — not just closing the gap, but taking the win**, beating both NumPy and a
 straightforward Rust `Vec<bool>` implementation. This fully confirms the
 original hypothesis: the compiled-language raw loop was never structurally
@@ -234,10 +234,10 @@ is synthetic.
 
 | Variant | Mean | Stdev | vs. Mojo |
 |---|---:|---:|---:|
-| Mojo (byte-span hash table) | 0.3009 s | 0.0032 s | 1.0x |
-| Rust (`HashMap<Vec<u8>,u64>`) | 0.4613 s | 0.0030 s | 1.5x slower |
-| Python (`collections.Counter`) | 1.6892 s | 0.0102 s | 5.6x slower |
-| Python (manual `dict`) | 1.9158 s | 0.0141 s | 6.4x slower |
+| Mojo (byte-span hash table) | 0.2982 s | 0.0010 s | 1.0x |
+| Rust (`HashMap<Vec<u8>,u64>`) | 0.4621 s | 0.0046 s | 1.5x slower |
+| Python (`collections.Counter`) | 1.6883 s | 0.0111 s | 5.7x slower |
+| Python (manual `dict`) | 1.8945 s | 0.0065 s | 6.4x slower |
 
 **Same story as category B, and the most dramatic swing in this repo.**
 
@@ -255,7 +255,7 @@ comfortable headroom for the corpus's 317 unique words) keyed by **byte
 spans into the already-loaded corpus buffer** — `(start, end)` offset pairs,
 not allocated Strings. A `String` is only ever materialized 317 times total
 (once per unique word, when building the final top-20 list), not 15 million
-times. Result: **0.301s — a 7.1x improvement, and now the fastest
+times. Result: **0.298s — a 7.2x improvement, and now the fastest
 implementation of the three**, beating even the from-scratch Rust port
 (which, for a fair one-shot comparison, uses the analogous naive pattern —
 `HashMap<Vec<u8>, u64>` with a fresh `Vec<u8>` key per token — and itself
@@ -287,10 +287,10 @@ the file read, same convention as category C.
 
 | Variant | Mean | Stdev | vs. Rust |
 |---|---:|---:|---:|
-| Rust (manual parse, `HashMap`) | 0.6652 s | 0.0039 s | 1.0x |
-| Mojo (manual parse, `Dict`) | 0.8077 s | 0.0117 s | 1.2x slower |
-| Python (pandas) | 1.8318 s | 0.0061 s | 2.8x slower |
-| Python (manual, `csv` module) | 3.1597 s | 0.0198 s | 4.8x slower |
+| Rust (manual parse, `HashMap`) | 0.6650 s | 0.0062 s | 1.0x |
+| Mojo (manual parse, `Dict`) | 0.8027 s | 0.0072 s | 1.2x slower |
+| Python (pandas) | 1.8114 s | 0.0083 s | 2.7x slower |
+| Python (manual, `csv` module) | 3.1915 s | 0.1015 s | 4.8x slower |
 
 **The only category where Mojo doesn't win — by a modest 21%, and it also
 has its own before/after story.** The first Mojo implementation built a
@@ -302,7 +302,7 @@ category C made, at 10M rows instead of 15M tokens. That version measured
 **9.67s**, badly losing to every other variant including manual Python.
 
 Applying the same lesson from category C — stop allocating what you're
-about to discard — cut it to **0.808s, a 12x improvement**: quantity and
+about to discard — cut it to **0.803s, a 12x improvement**: quantity and
 price_cents are now parsed as integers directly from the raw byte stream
 (digit-by-digit accumulation, zero allocation), and a `String` is built
 *only* for the category field, since that's the only one that actually
@@ -351,8 +351,8 @@ specific reason:
 
 | Grid | CPU/SIMD (Float64) | GPU/MAX (Float32) | GPU speedup |
 |---|---:|---:|---:|
-| 800×600 (480K px, default) | 0.0557 s | 0.0060 s | 9.3x |
-| 4000×3000 (12M px) | 1.3613 s | 0.0852 s | 16.0x |
+| 800×600 (480K px, default) | 0.0641 s | 0.0071 s | 9.0x |
+| 4000×3000 (12M px) | 1.3784 s | 0.0889 s | 15.5x |
 
 **Why this isn't held to the checksum-equality gate everywhere else in this
 repo**: Apple's Metal backend has no compute-kernel `double` (float64)
@@ -370,11 +370,52 @@ shipping float64 compute support.
 **The result itself**: GPU dispatch wins decisively even at this problem's
 tiny default size (480K pixels — usually considered too small to amortize
 kernel-launch and host-transfer overhead), and the margin *grows* with
-scale, from 9.3x to 16.0x at 12 million pixels. This is the expected
+scale, from 9.0x to 15.5x at 12 million pixels. This is the expected
 shape for embarrassingly-parallel work on this hardware, and it's a clean
 confirmation rather than a surprise — but it's reported with real numbers
 at two sizes instead of asserted, which is the whole point of measuring
 instead of assuming.
+
+## Cross-platform: what Linux CI actually shows
+
+[`.github/workflows/benchmark.yml`](.github/workflows/benchmark.yml) runs
+the full suite on every push, on `ubuntu-latest` (x86_64) and
+`ubuntu-24.04-arm` (arm64) GitHub-hosted runners — 3 trials, 1 warmup
+(lighter than the primary 7/2 convention, since these are shared runners
+and this is a secondary reference point, not the headline number). All
+three platforms' raw data is in [`results/results.json`](results/results.json)
+(macOS) and the workflow's uploaded artifacts (Linux); the table below is
+mean seconds.
+
+| Category | Variant | macOS arm64 (M4 Pro) | Linux x86_64 (CI) | Linux arm64 (CI) |
+|---|---|---:|---:|---:|
+| A Mandelbrot | Mojo | 0.055 s | 0.052 s | 0.092 s |
+| B Sieve | Mojo | 0.121 s | 0.451 s | 0.160 s |
+| B Sieve | NumPy | 0.142 s | 0.505 s | **0.141 s** |
+| C Word-freq | Mojo | 0.298 s | 0.620 s | 0.514 s |
+| D CSV agg | Rust | 0.665 s | 1.285 s | 1.000 s |
+| D CSV agg | Mojo | 0.803 s | 1.546 s | 1.836 s |
+
+Two things worth reporting honestly rather than smoothing over:
+
+- **Every number is slower on CI than on the dedicated Mac** — expected,
+  GitHub-hosted runners are shared, thermally-limited, and not dedicated to
+  one process. Category B on `ubuntu-latest` in this specific run is the
+  most extreme case (Mojo, Rust, and NumPy all cluster around 0.45-0.5s,
+  roughly 3-4x their macOS times, while Linux arm64 stays close to macOS)
+  — read as one noisy run on a shared x86_64 instance, not a real
+  x86_64-vs-arm64 architectural finding, especially at only 3 trials.
+- **Category B's ranking isn't stable across architecture.** Mojo's
+  raw-pointer sieve beats NumPy on macOS arm64 (0.121s vs 0.142s) and on
+  Linux x86_64 (0.451s vs 0.505s) — but **NumPy edges it back out on Linux
+  arm64** (0.141s vs 0.160s), the one cell in this whole table where the
+  cross-platform ranking actually flips. Categories A, C, and D keep the
+  same winner on all three platforms. This is reported as an open,
+  unresolved observation rather than explained away — it's consistent with
+  (but doesn't prove) the bounds-check-free marking loop's advantage over
+  NumPy's strided bulk write being sensitive to how each arm64 target's
+  autovectorizer handles the loop, which would need lower-level profiling
+  on real (non-shared) arm64 Linux hardware to actually confirm.
 
 ## What this repo does and doesn't tell you
 
