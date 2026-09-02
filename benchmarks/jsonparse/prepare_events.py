@@ -15,6 +15,7 @@ Usage:
 """
 
 import json
+import os
 import random
 
 random.seed(42)
@@ -79,10 +80,10 @@ def main():
         })
 
     out_path = "benchmarks/jsonparse/data/events.json"
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(events, f, separators=(",", ":"))
 
-    import os
     size_mb = os.path.getsize(out_path) / 1024 / 1024
     print(f"Wrote {len(events)} events, {size_mb:.1f} MiB -> {out_path}")
 
