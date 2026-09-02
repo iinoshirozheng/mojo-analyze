@@ -12,6 +12,10 @@ name = "sieve"
 path = "src/bin/sieve.rs"
 
 [[bin]]
+name = "sieve_unsafe"
+path = "src/bin/sieve_unsafe.rs"
+
+[[bin]]
 name = "wordfreq"
 path = "src/bin/wordfreq.rs"
 
