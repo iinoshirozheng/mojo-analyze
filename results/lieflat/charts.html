@@ -43,7 +43,7 @@
     <span class="badge">LUPI 基础型 · 哑铃对比 · F12 DUMBBELL QUEUE</span>
     <h2>Three losing Mojo attempts, and the rewrite that fixed each one</h2>
     <div class="sub">hollow dot = 1.0× (the original attempt, always the baseline) · ink dot = the speedup the rewrite achieved · one bead ≈ 1× faster, log-scaled position</div>
-    <svg id="dumbbell" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg id="dumbbell" viewBox="0 0 760 268" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="src">DUMBBELL QUEUE · MONO-BASIC · REWRITE, BEFORE →AFTER · SOURCE: results/results.json + ANALYSIS.md</div>
   </div>
 
@@ -93,34 +93,37 @@ const D=[
 ];
 const MAXV=13;
 obsReveal('dumbbell',s=>{
-  const y0=i=>44+i*58,X0=132,X1=364,mapX=v=>X0+Math.log(v)/Math.log(MAXV)*(X1-X0);
+  // wide card, so the viewBox (760x240) matches its real aspect ratio instead
+  // of a narrower 400-unit box letterboxing inside it — that mismatch was
+  // the actual cause of the cramped type, not the font sizes themselves.
+  const y0=i=>56+i*74,X0=224,X1=704,mapX=v=>X0+Math.log(v)/Math.log(MAXV)*(X1-X0);
   D.forEach(([name,after,beads,outcome],i)=>{
     const y=y0(i),xa=mapX(1.0),xb=mapX(after);
-    txt(s,{x:126,y:y-14,'font-size':7.3,'font-weight':700,fill:'#6A6963','text-anchor':'end',
-      'letter-spacing':'.05em',class:'fade',style:`animation-delay:${i*.08}s`},name);
-    txt(s,{x:126,y:y+15,'font-size':7,'font-weight':600,fill:'#B0AFA9','text-anchor':'end',
+    txt(s,{x:200,y:y-17,'font-size':10.5,'font-weight':700,fill:'#6A6963','text-anchor':'end',
+      'letter-spacing':'.04em',class:'fade',style:`animation-delay:${i*.08}s`},name);
+    txt(s,{x:200,y:y+19,'font-size':9,'font-weight':600,fill:'#B0AFA9','text-anchor':'end',
       'font-style':'italic',class:'fade',style:`animation-delay:${.2+i*.08}s`},outcome);
-    el(s,'line',{x1:X0-6,y1:y,x2:X1+8,y2:y,stroke:'#E3E2DB','stroke-width':.7,
+    el(s,'line',{x1:X0-10,y1:y,x2:X1+12,y2:y,stroke:'#E3E2DB','stroke-width':.9,
       class:'fade',style:`animation-delay:${i*.08}s`});
     for(let k=0;k<beads;k++){
-      const t=(k+.5)/beads,x=xa+t*(xb-xa),yy=y+(rnd(k+1,i+3)-.5)*2.6;
-      el(s,'circle',{cx:x,cy:yy,r:1.4+rnd(k+2,i+4)*.8,fill:'#8F8E88',opacity:.85,
+      const t=(k+.5)/beads,x=xa+t*(xb-xa),yy=y+(rnd(k+1,i+3)-.5)*3.2;
+      el(s,'circle',{cx:x,cy:yy,r:1.8+rnd(k+2,i+4)*1,fill:'#8F8E88',opacity:.85,
         class:'pop',style:`animation-delay:${.3+i*.08+k*.03}s`});
     }
-    el(s,'circle',{cx:xa,cy:y,r:4.2,fill:PAPER,stroke:INK,'stroke-width':1.3,
+    el(s,'circle',{cx:xa,cy:y,r:5.2,fill:PAPER,stroke:INK,'stroke-width':1.6,
       class:'pop',style:`animation-delay:${.2+i*.08}s`});
-    const afterDot=el(s,'circle',{cx:xb,cy:y,r:4.6,fill:INK,
+    const afterDot=el(s,'circle',{cx:xb,cy:y,r:5.8,fill:INK,
       class:'pop',style:`animation-delay:${.6+i*.08}s`});
     tip(afterDot,`${name} — 1.0x baseline -> ${after}x faster after the rewrite`);
-    txt(s,{x:xa,y:y-8,'font-size':8,'font-weight':700,fill:'#B0AFA9','text-anchor':'middle',
+    txt(s,{x:xa,y:y-11,'font-size':10,'font-weight':700,fill:'#B0AFA9','text-anchor':'middle',
       class:'fade',style:`animation-delay:${.3+i*.08}s`},'1.0×');
-    txt(s,{x:xb,y:y-8,'font-size':10.5,'font-weight':800,fill:INK,'text-anchor':'middle',
+    txt(s,{x:xb,y:y-11,'font-size':14,'font-weight':800,fill:INK,'text-anchor':'middle',
       class:'fade',style:`animation-delay:${.7+i*.08}s`},after.toFixed(1)+'×');
   });
-  txt(s,{x:X0,y:200,'font-size':7,'font-weight':600,fill:'#C6C5BF'},'BASELINE (1×)');
-  txt(s,{x:X1+8,y:200,'font-size':7,'font-weight':600,fill:'#C6C5BF','text-anchor':'end'},'FASTER →');
-  txt(s,{x:248,y:214,'font-size':7,'font-weight':600,fill:'#B0AFA9','text-anchor':'middle',
-    'letter-spacing':'.10em'},'ALL THREE STARTED AT THE SAME RELATIVE BASELINE — THE REWRITE IS THE ONLY VARIABLE');
+  txt(s,{x:X0,y:246,'font-size':9,'font-weight':600,fill:'#C6C5BF'},'BASELINE (1×)');
+  txt(s,{x:X1+12,y:246,'font-size':9,'font-weight':600,fill:'#C6C5BF','text-anchor':'end'},'FASTER →');
+  txt(s,{x:464,y:260,'font-size':8.5,'font-weight':600,fill:'#B0AFA9','text-anchor':'middle',
+    'letter-spacing':'.08em'},'ALL THREE STARTED AT THE SAME RELATIVE BASELINE — THE REWRITE IS THE ONLY VARIABLE');
 });
 })();
 
