@@ -28,6 +28,13 @@ benchmark produced byte-identical output first. Raw per-trial data lives in
 
 ![Who leads each category, and by how much](results/lieflat/chart_margin_overview.png)
 
+*(This chart predates C joining the comparison and category E, so it still
+shows the 4-category, Mojo/Rust-only "who leads" picture — read it for the
+Mojo-vs-Rust story it was built for, and the TL;DR table above for the
+current, C-inclusive standings. Regenerating it against the 5-category data
+is an open follow-up, not done here to keep this round's scope to what was
+asked.)*
+
 Mojo wins outright only where its SIMD API gets to do real work
 (Mandelbrot). Everywhere else, C's decades-mature compiler, zero
 abstraction overhead, and lack of any runtime safety bookkeeping wins --
@@ -488,6 +495,11 @@ just added to the workflow and will appear starting with the next push.
 | C Word-freq | Mojo | 0.312 s | 0.620 s | 0.514 s |
 | D CSV agg | Rust | 0.665 s | 1.285 s | 1.000 s |
 | D CSV agg | Mojo | 0.637 s | 1.546 s | 1.836 s |
+
+![Does Mojo's Sieve win hold across hardware?](results/lieflat/chart_crossplatform_flip.png)
+
+*(Built before C joined the comparison, but its Mojo-vs-NumPy story for
+category B is unaffected by that addition — the numbers still hold.)*
 
 Two things worth reporting honestly rather than smoothing over:
 
