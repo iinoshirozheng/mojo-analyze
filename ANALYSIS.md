@@ -24,6 +24,14 @@ produced byte-identical output first. Raw per-trial data lives in
 | C — real-world string/hash | Word-frequency count | **Mojo** | fastest — 1.5x faster than Rust, 5.7x faster than Python `Counter` *(previously lost to Counter — see below)* |
 | D — real-world tabular agg. | CSV group-by + sum | **Rust** | Mojo is 1.2x slower than Rust, but beats pandas by 2.3x |
 
+![Who leads each category, and by how much](results/lieflat/chart_margin_overview.png)
+
+Same table, read as a ranked chart: ticks are the leader's margin over the
+runner-up (0.1× per tick), and the label under each row says who's actually
+ahead — three rows say Mojo, one says Rust. Below is the same data indexed
+to a common base instead of margin-over-runner-up, which is the more
+useful view once absolute scale matters (see the caption under it):
+
 ![Same four categories, indexed to a common base — who wins each one](results/chart_speedup.png)
 
 The four categories live on wildly different absolute timescales (6ms to
@@ -88,8 +96,15 @@ measured differences with real causes, not a marketing number.
   pixi run prepare-data       # regenerates the synthetic CSV aggregation data
   pixi run bench --trials 7 --warmup 2   # the four core categories
   pixi run bench-gpu          # the separate CPU-vs-GPU mini-benchmark
-  pixi run charts             # renders the three PNGs embedded in this doc
+  pixi run charts             # renders the three matplotlib PNGs embedded in this doc
   ```
+  The three narrative charts (rewrite story, cross-platform, margin
+  overview) are a separate, manual step: open
+  [`results/lieflat/charts.html`](results/lieflat/charts.html) in a
+  browser (built with [Lieflat Charts](https://github.com/larashero3-dotcom/lieflat-charts)
+  against the numbers above) and screenshot each card — there's no pixi
+  task for this because the source data is copied into the HTML by hand,
+  not read from `results/results.json` at render time.
 
 ### Threats to validity
 
@@ -122,6 +137,16 @@ Read this before citing a number from this doc elsewhere:
   natural idiomatic implementations, not hand-tuned to compete.
 
 ## Results
+
+![Three losing Mojo attempts, and the rewrite that fixed each one](results/lieflat/chart_rewrite_story.png)
+
+Three of the four categories have a before/after arc, and this is the one
+chart that puts all three side by side: every row starts at the same 1.0×
+baseline — the original, straightforward, *losing* Mojo attempt — and the
+ink dot is how many times faster the specific, disclosed rewrite made it,
+beads counting the multiple. B and C's rewrites took them all the way to
+1st place; D's took it from dead last to 2nd, still behind Rust. Full
+per-category detail, including exactly what each rewrite changed, is below.
 
 ![Mojo vs. Rust vs. Python vs. NumPy/pandas — mean wall-clock time, lower is better, four panels one per category](results/chart_absolute.png)
 
@@ -395,6 +420,13 @@ mean seconds.
 | C Word-freq | Mojo | 0.298 s | 0.620 s | 0.514 s |
 | D CSV agg | Rust | 0.665 s | 1.285 s | 1.000 s |
 | D CSV agg | Mojo | 0.803 s | 1.546 s | 1.836 s |
+
+![Does Mojo's Sieve win hold across hardware?](results/lieflat/chart_crossplatform_flip.png)
+
+That last row of the chart above is the one to look at closely: Mojo runs
+at 85% and 89% of NumPy's time on macOS arm64 and Linux x86_64 respectively
+(shorter ink rung = Mojo faster) — but 114% on Linux arm64, the one bar
+that grows past its faint 100% reference instead of staying under it.
 
 Two things worth reporting honestly rather than smoothing over:
 

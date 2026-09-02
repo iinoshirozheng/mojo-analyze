@@ -28,6 +28,15 @@ each into the fastest implementation in the suite.
 
 ## Results at a glance
 
+![Three losing Mojo attempts, and the rewrite that fixed each one](results/lieflat/chart_rewrite_story.png)
+
+Two of Mojo's three wins below didn't start as wins — the chart above is
+the whole story in one picture: every rewrite started at the same 1.0×
+baseline (the original, losing attempt), and the bead count on each line
+is literally how many times faster the specific, disclosed fix made it.
+Category D isn't finished — 12x faster than its first attempt, but still
+2nd place behind Rust.
+
 ![Same four categories, indexed to a common base — who wins each one](results/chart_speedup.png)
 
 | Category | Task | Winner | Mojo vs. fastest other |
@@ -44,7 +53,10 @@ C) that turned each into the fastest implementation measured. Full
 methodology, per-category charts, root-cause analysis for every result
 (including a real FMA-rounding bug the checksum gate caught, and a
 CPU-vs-GPU comparison for Mandelbrot), and threats to validity are in
-[`ANALYSIS.md`](ANALYSIS.md).
+[`ANALYSIS.md`](ANALYSIS.md) — including the cross-platform finding that
+Mojo's Sieve win doesn't hold on every architecture (chart below).
+
+![Does Mojo's Sieve win hold across hardware?](results/lieflat/chart_crossplatform_flip.png)
 
 ## What it does
 
@@ -155,7 +167,12 @@ new code.
 Built with the same benchmark-honesty methodology established while
 building [`fire-cube`](https://github.com/iinoshirozheng/fire-cube), a
 SIMD-accelerated Mojo terminal demo, and following the
-[mojo-syntax](https://mojolang.org) conventions of current Mojo 1.0.
+[mojo-syntax](https://mojolang.org) conventions of current Mojo 1.0. The
+narrative charts (rewrite story, cross-platform, margin overview) are built
+with [Lieflat Charts](https://github.com/larashero3-dotcom/lieflat-charts)
+— source in [`results/lieflat/charts.html`](results/lieflat/charts.html);
+the per-category and speedup charts are plain matplotlib
+(`scripts/make_charts.py`).
 
 ## License
 
