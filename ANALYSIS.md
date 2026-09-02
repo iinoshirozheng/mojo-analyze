@@ -21,10 +21,10 @@ benchmark produced byte-identical output first. Raw per-trial data lives in
 | Category | Task | Winner | Mojo's place |
 |---|---|---|---|
 | A — SIMD-friendly | Mandelbrot render | **Mojo** | 1st — 1.6x faster than C, 2.0x faster than Rust |
-| B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd — 1.02x behind C, 1.17x ahead of Rust *(previously lost to NumPy — see below)* |
+| B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd — 1.05x behind C, 1.14x ahead of Rust *(previously lost to NumPy — see below)* |
 | C — real-world string/hash | Word-frequency count | **C** | 2nd — 1.6x behind C, 1.5x ahead of Rust *(previously lost to `Counter` — see below)* |
-| D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd — 2.2x behind C, narrowly ahead of Rust |
-| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd — 2.9x behind C, behind Rust too |
+| D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd — 2.3x behind C, narrowly ahead of Rust |
+| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd — 3.0x behind C, behind Rust too |
 
 ![Who leads each category, and by how much](results/lieflat/chart_margin_overview.png)
 
@@ -82,8 +82,12 @@ absolute numbers are in [Results](#results) below, generated from the same
 - **Trials**: 2 discarded warmup runs, then 7 measured runs per variant
   (`pixi run bench --trials 7 --warmup 2`). Mean, median, and stdev are all
   in `results/results.json`; the tables below show mean — stdev stayed
-  under ~5% of the mean in every category this revision (word-frequency's
-  Python `dict` variant is the noisiest, ~5%).
+  under ~5% of the mean in every variant except one: category E's pure-Python
+  hand-rolled parser (~19.8s mean, ~2.0s stdev, ~10%), the slowest single
+  variant in this repo by a wide margin at 343 MiB of pure-Python
+  character-level parsing — plausibly GC/allocator pressure at that scale,
+  not investigated further since it's already the category's naive-baseline
+  floor, not a number anyone's citing precisely.
 - **Correctness gate**: `scripts/bench.py` refuses to report timings for a
   benchmark unless every variant's checksum matches — this caught a real
   bug during development (see [Mandelbrot](#a--mandelbrot-simd-friendly)
@@ -171,11 +175,11 @@ every pixel's escape-iteration count.
 
 | Variant | Mean | Stdev | vs. Mojo |
 |---|---:|---:|---:|
-| Mojo (SIMD) | 0.0563 s | 0.0006 s | 1.0x |
-| C (`-O3`, scalar) | 0.0911 s | — | 1.6x slower |
-| Rust (scalar, release) | 0.1130 s | — | 2.0x slower |
-| NumPy | 0.7136 s | — | 12.7x slower |
-| Python (pure) | 2.5392 s | — | 45.1x slower |
+| Mojo (SIMD) | 0.0551 s | 0.0004 s | 1.0x |
+| C (`-O3`, scalar) | 0.0899 s | 0.0016 s | 1.6x slower |
+| Rust (scalar, release) | 0.1121 s | 0.0012 s | 2.0x slower |
+| NumPy | 0.7175 s | 0.0177 s | 13.0x slower |
+| Python (pure) | 2.5207 s | 0.0328 s | 45.8x slower |
 
 **The one category Mojo wins outright**, and it's the category Mojo was
 built for: every pixel is an independent, branch-light arithmetic loop, and
@@ -216,11 +220,11 @@ raw loop/memory-access speed *without* SIMD doing the work.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (`-O3`, idiomatic) | 0.1269 s | — | 1.0x |
-| Mojo (raw pointer) | 0.1292 s | 0.0065 s | 1.02x slower |
-| Rust (`Vec<bool>`, release) | 0.1490 s | — | 1.17x slower |
-| NumPy (vectorized slice) | 0.1566 s | — | 1.23x slower |
-| Python (pure, bytearray) | 2.2038 s | — | 17.4x slower |
+| C (`-O3`, idiomatic) | 0.1135 s | 0.0029 s | 1.0x |
+| Mojo (raw pointer) | 0.1192 s | 0.0037 s | 1.05x slower |
+| Rust (`Vec<bool>`, release) | 0.1363 s | 0.0023 s | 1.20x slower |
+| NumPy (vectorized slice) | 0.1419 s | 0.0016 s | 1.25x slower |
+| Python (pure, bytearray) | 2.1679 s | 0.0205 s | 19.1x slower |
 
 **This category flipped completely during the writing of this repo, twice
 over, and Mojo's raw-pointer rewrite now lands within 2% of C.**
@@ -270,11 +274,11 @@ why the corpus is synthetic.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (byte-span hash table) | 0.1911 s | — | 1.0x |
-| Mojo (byte-span hash table) | 0.3122 s | 0.0058 s | 1.6x slower |
-| Rust (`HashMap<Vec<u8>,u64>`) | 0.4770 s | — | 2.5x slower |
-| Python (`collections.Counter`) | 1.7681 s | — | 9.3x slower |
-| Python (manual `dict`) | 2.0099 s | — | 10.5x slower |
+| C (byte-span hash table) | 0.1910 s | 0.0088 s | 1.0x |
+| Mojo (byte-span hash table) | 0.3050 s | 0.0012 s | 1.6x slower |
+| Rust (`HashMap<Vec<u8>,u64>`) | 0.4749 s | 0.0069 s | 2.5x slower |
+| Python (`collections.Counter`) | 1.7684 s | 0.0238 s | 9.3x slower |
+| Python (manual `dict`) | 1.9882 s | 0.0181 s | 10.4x slower |
 
 **Same before/after story as category B — Mojo went from slowest of three
 to 2nd of five — but this is the one category where C pulls meaningfully
@@ -323,11 +327,11 @@ Timing includes the file read.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (byte-span hash table) | 0.2842 s | — | 1.0x |
-| Mojo (byte-span hash table) | 0.6373 s | 0.0168 s | 2.2x slower |
-| Rust (`HashMap<&str, i64>`) | 0.6955 s | — | 2.4x slower |
-| Python (pandas) | 1.8438 s | — | 6.5x slower |
-| Python (manual, `csv` module) | 3.1869 s | — | 11.2x slower |
+| C (byte-span hash table) | 0.2932 s | 0.0160 s | 1.0x |
+| Mojo (byte-span hash table) | 0.6623 s | 0.0220 s | 2.3x slower |
+| Rust (`HashMap<&str, i64>`) | 0.6906 s | 0.0090 s | 2.4x slower |
+| Python (pandas) | 1.8732 s | 0.0279 s | 6.4x slower |
+| Python (manual, `csv` module) | 3.2417 s | 0.0356 s | 11.1x slower |
 
 Mojo already applies the byte-span technique here (this benchmark shipped
 with it from the start, rather than needing a separate before/after
@@ -354,11 +358,11 @@ amounts only, same reasoning as category D. Timing includes the file read.
 
 | Variant | Mean | Stdev | vs. C |
 |---|---:|---:|---:|
-| C (scanning parser) | 0.2892 s | — | 1.0x |
-| Rust (scanning parser) | 0.4247 s | — | 1.5x slower |
-| Mojo (scanning parser) | 0.8305 s | — | 2.9x slower |
-| Python (`json` stdlib) | 2.5600 s | — | 8.9x slower |
-| Python (manual, hand-rolled) | 18.3159 s | — | 63.3x slower |
+| C (scanning parser) | 0.2903 s | 0.0047 s | 1.0x |
+| Rust (scanning parser) | 0.4351 s | 0.0032 s | 1.5x slower |
+| Mojo (scanning parser) | 0.8662 s | 0.0101 s | 3.0x slower |
+| Python (`json` stdlib) | 2.5887 s | 0.0195 s | 8.9x slower |
+| Python (manual, hand-rolled) | 19.7561 s | 1.9799 s | 68.1x slower |
 
 **The only category where Mojo isn't 1st or 2nd.** All three systems
 languages use the same approach — a targeted scanning parser (not a full
@@ -413,11 +417,11 @@ here.
 
 | Category | CPU/SIMD (mean) | GPU/MAX (mean) | Result |
 |---|---:|---:|---|
-| A — Mandelbrot, 800x600 | 0.056 s | 0.006 s | GPU 9.3x faster |
-| A — Mandelbrot, 4000x3000 | 1.37 s | 0.086 s | GPU 15.9x faster |
-| B — Sieve, limit 50M | 0.124 s | 0.698 s | GPU 5.7x **slower** |
-| C — Word-freq, 62.4 MiB | 0.303 s | 0.361 s | GPU 1.2x **slower** |
-| D — CSV agg, 277.9 MiB | 0.624 s | 0.722 s | GPU 1.2x **slower** |
+| A — Mandelbrot, 800x600 | 0.058 s | 0.007 s | GPU 7.9x faster |
+| A — Mandelbrot, 4000x3000 | 1.364 s | 0.088 s | GPU 15.4x faster |
+| B — Sieve, limit 50M | 0.125 s | 0.701 s | GPU 5.6x **slower** |
+| C — Word-freq, 62.4 MiB | 0.303 s | 0.369 s | GPU 1.2x **slower** |
+| D — CSV agg, 277.9 MiB | 0.643 s | 0.737 s | GPU 1.1x **slower** |
 
 **Only Mandelbrot wins on GPU, and it wins decisively — the other three
 lose, by a small-to-large margin.** This is the cleanest confirmation this
@@ -438,7 +442,7 @@ category A's FMA bug exploited, from a different source (reduced mantissa
 precision instead of instruction fusion). GPU dispatch wins even at this
 problem's tiny default size (480K pixels, usually too small to amortize
 kernel-launch/transfer overhead), and the margin *grows* with scale, from
-9.3x to 15.9x at 12 million pixels — the expected shape for
+7.9x to 15.4x at 12 million pixels — the expected shape for
 embarrassingly-parallel work.
 
 **Sieve (checksum gated, exact match — and it matched)**: rather than a
@@ -449,7 +453,7 @@ division against a small precomputed list of primes up to sqrt(limit). This is
 a genuinely different algorithm from the CPU sieve (O(n*pi(sqrt(n))) instead of
 O(n log log n)) — disclosed in the kernel's header — but produces the
 identical set of primes, so the checksum still matches exactly. The result
-is unambiguous: GPU loses by 5.7x at the default size, and the gap
+is unambiguous: GPU loses by 5.6x at the default size, and the gap
 *worsens* with scale rather than improving (at limit=500,000,000, GPU takes
 12.06s vs. CPU's 1.98s — 6.1x slower) — the opposite trend from Mandelbrot,
 because trial division's worse asymptotic complexity means more total work

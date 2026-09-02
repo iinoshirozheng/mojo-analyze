@@ -33,13 +33,19 @@ to a near-tie with C.
 
 ![Who leads each category, and by how much](results/lieflat/chart_margin_overview.png)
 
+*(This chart and the rewrite-story one below predate C joining the
+comparison and category E — they still show the original 4-category,
+Mojo/Rust-only picture. The table and `chart_speedup.png` right after it
+are current; see [`ANALYSIS.md`](ANALYSIS.md#tldr) for the same caveat and
+the up-to-date standings.)*
+
 | Category | Task | Winner | Mojo's place |
 |---|---|---|---|
 | A — SIMD-friendly | Mandelbrot render | **Mojo** | 1st — 1.6x faster than C |
-| B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd, 1.02x behind — *previously lost to NumPy, see analysis* |
+| B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd, 1.05x behind — *previously lost to NumPy, see analysis* |
 | C — real-world string/hash | Word-frequency count | **C** | 2nd, 1.6x behind — *previously lost to `Counter`, see analysis* |
-| D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd, 2.2x behind |
-| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd, 2.9x behind |
+| D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd, 2.3x behind |
+| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd, 3.0x behind |
 
 Mojo wins outright only where its SIMD API gets real work to do
 (Mandelbrot). Everywhere else, C's decades-mature compiler and total
