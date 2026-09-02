@@ -36,7 +36,6 @@ jobs:
 
       - run: pixi run build
       - run: pixi run build-rust
-      - run: python scripts/bench_sieve_rust_unsafe.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
       - run: pixi run build-c
       - run: pixi run prepare-corpus
       - run: pixi run prepare-data
@@ -48,6 +47,25 @@ jobs:
           name: results-linux-${{ matrix.arch }}
           path: results/results.json
 
+  sieve-rust-unsafe:
+    # Focused causal experiment: everything is identical to the canonical Rust
+    # sieve except the hot marking write uses get_unchecked_mut. Keep this in a
+    # separate job so its 7-trial result is available without waiting for the
+    # much slower full cross-language suite.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --manifest-path rust/Cargo.toml
+      - run: python scripts/bench_sieve_rust_unsafe.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
       - uses: actions/upload-artifact@v7
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
