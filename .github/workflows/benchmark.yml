@@ -36,6 +36,7 @@ jobs:
 
       - run: pixi run build
       - run: pixi run build-rust
+      - run: python scripts/bench_sieve_rust_unsafe.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
       - run: pixi run build-c
       - run: pixi run prepare-corpus
       - run: pixi run prepare-data
@@ -46,3 +47,8 @@ jobs:
         with:
           name: results-linux-${{ matrix.arch }}
           path: results/results.json
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sieve-rust-unsafe-${{ matrix.arch }}
+          path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
