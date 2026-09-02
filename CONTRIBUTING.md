@@ -84,16 +84,39 @@ trick rather than an exemption — see its header comment).
 
 ## Ideas that would be welcome
 
-- **A raw-pointer rewrite of the word-freq/csvagg/jsonparse hash tables'
-  slot arrays.** `ANALYSIS.md`'s category-C section found that C beats
-  Mojo by ~1.6x on the *identical* byte-span hash-table algorithm, and
-  attributes the gap to Mojo's `List[Bool]`/`List[UInt64]`/`List[Int]` slot
-  arrays still paying `List`'s bounds-check overhead per hash-table probe
-  — the same mechanism category B's raw-pointer sieve rewrite eliminated.
-  Applying that same fix to categories C, D, and E together (they share the
-  identical hash-table pattern) would directly test that hypothesis across
-  three categories at once, and category E in particular (currently Mojo's
-  only 3rd-place finish) is the best candidate to re-test after.
+- **A raw-pointer rewrite of the word-freq/csvagg hash tables' slot
+  arrays.** `ANALYSIS.md`'s category-C section found that C beats Mojo by
+  ~1.6x on the *identical* byte-span hash-table algorithm, and attributes
+  the gap to Mojo's `List[Bool]`/`List[UInt64]`/`List[Int]` slot arrays
+  still paying `List`'s bounds-check overhead per hash-table probe — the
+  same mechanism category B's raw-pointer sieve rewrite eliminated.
+  Applying that fix to categories C and D (both share the identical
+  hash-table pattern) would directly test that hypothesis. **Category E is
+  a different story, not the same follow-up**: Rust's JSON variant doesn't
+  even use a byte-span hash table there (plain `std::HashMap<&str,i64>`)
+  and still beats Mojo by ~2x, which points at the *parser* (`skip_value`/
+  `skip_string` recursion, `Span` handling), not the hash table — profile
+  that before assuming the same fix applies.
+- **Give Rust's hash-table variants a fair non-cryptographic-hasher
+  comparison.** Every Rust variant in this repo uses
+  `std::collections::HashMap`'s default hasher, SipHash — deliberately
+  DoS-resistant, and well-documented as slower than a plain hash like
+  FNV-1a for short keys. Category C's Rust also allocates an owned
+  `Vec<u8>` key per token (unlike its own category D variant, which borrows
+  a `&str`) — that inconsistency between Rust's *own* two implementations
+  is disclosed in `ANALYSIS.md` but not fixed. A `FxHashMap`/`ahash`-style
+  swap (or a hand-rolled byte-span table matching Mojo/C's) would separate
+  "Rust's default HashMap is a poor fit for this workload" from "Rust the
+  compiler is slower" — right now this repo can't tell those apart, by
+  design (every variant is "standard library only," which is honest but
+  means the *default* std HashMap's known-slow-for-this-case hasher never
+  gets a fair alternative measured).
+- **A fair `unsafe` Rust variant for category B (Sieve).** Rust's `Vec<bool>`
+  pays a bounds check on every marking write; Mojo and C both mark through
+  unchecked raw memory. An `unsafe`/`get_unchecked` Rust rewrite, cheap to
+  write, would tell you whether Rust landing behind C/Mojo here is really
+  "safe-Rust's bounds-checking tax" (the current best guess) or something
+  else.
 - **Investigate the Linux arm64 Sieve reversal at the codegen level.**
   `ANALYSIS.md`'s cross-platform section confirms — across 7 independent CI
   runs — that NumPy beats Mojo's raw-pointer sieve specifically on Linux

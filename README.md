@@ -91,6 +91,13 @@ pandas / `json`) implementation, all built to a shared contract
 (`scripts/bench.py`'s docstring): each program times only its own core
 computation and prints a `CHECKSUM:` line, so the harness can refuse to
 report timings unless every variant of a benchmark agrees on the answer.
+**"Same language" doesn't always mean "same technique"** — every category
+in [`ANALYSIS.md`](ANALYSIS.md) has a package/technique table stating
+exactly what library (or "hand-rolled, no package") and what
+algorithm/data-structure each variant actually uses, and flags it plainly
+when a timing gap turns out to be about technique choice (a bounds-checked
+array, an allocating hash-map key, a cryptographic-strength default
+hasher) rather than the language or compiler itself.
 
 ## Requirements
 

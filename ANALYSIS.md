@@ -39,8 +39,14 @@ Mojo wins outright only where its SIMD API gets to do real work
 (Mandelbrot). Everywhere else, C's decades-mature compiler, zero
 abstraction overhead, and lack of any runtime safety bookkeeping wins --
 usually by a modest, not crushing, margin. Mojo is *closer* to C than Rust
-is, in every category except word-frequency, which itself is a specific
-and interesting finding (see [Results](#results)).
+is in every category except JSON parsing (E) — and in three of those four
+non-Mandelbrot categories, Rust's own implementation carries a disclosed
+handicap Mojo/C's doesn't (either an owned-key allocation, the standard
+library's cryptographic-strength default hasher, or safe-Rust's
+bounds-checking on every array write — see each category's own section
+under [Results](#results), and the **package/technique table** in every
+one of them, for exactly what each language variant actually does before
+concluding a gap is about the language itself).
 
 ![Same five categories, indexed to a common base — who wins each one](results/chart_speedup.png)
 
@@ -71,6 +77,19 @@ absolute numbers are in [Results](#results) below, generated from the same
   crates, packages, or libraries beyond what "no numpy-equivalent
   shortcuts" already meant for the other languages — same spirit
   throughout.
+- **"Same algorithm" is checked, not assumed.** A same-language-family
+  timing gap can come from the language/compiler, *or* from one variant
+  using a genuinely different package or data-structure technique — those
+  are different findings and this repo doesn't conflate them. Every
+  category's Results section below has a **package/technique table**
+  naming exactly what library (or "none — hand-rolled") and what
+  algorithm/data-structure each variant uses, and calls out explicitly
+  when a category is *not* an apples-to-apples same-technique comparison
+  (category A's Mojo-SIMD-vs-scalar-C/Rust is intentional; several
+  Rust-vs-Mojo/C gaps in categories B/C/D turned out to carry an
+  undisclosed handicap — safe-Rust bounds-checking, an owned-vs-borrowed
+  key, or `std::HashMap`'s cryptographic-strength default hasher — see
+  each section for specifics).
 - **Timing**: each program is its own process and times *only* its core
   computation internally (own high-resolution clock, started right before
   the work and stopped right after) — process startup, argument parsing,
@@ -181,6 +200,25 @@ every pixel's escape-iteration count.
 | NumPy | 0.7175 s | 0.0177 s | 13.0x slower |
 | Python (pure) | 2.5207 s | 0.0328 s | 45.8x slower |
 
+| Variant | Package / library | Technique |
+|---|---|---|
+| Mojo | none — stdlib `SIMD` type | **Explicit SIMD**: `SIMD[DType.float64, 4]`, 4 pixels/lane, per-lane active mask, scalar remainder loop for `width % 4` |
+| C | none — stdlib only | Plain scalar loop, no vectorization attempt, no intrinsics |
+| Rust | none — `std` only | Plain scalar loop, no vectorization attempt, no `std::simd` |
+| NumPy | `numpy` | Vectorized whole-array ops, boolean-mask-indexed reassignment, no per-pixel Python loop |
+| Python | none | Plain scalar nested loop |
+
+**Not an apples-to-apples same-technique comparison, by design.** Mojo wins
+specifically *because* it uses SIMD and the C/Rust versions don't — neither
+has a hand-vectorized or `unsafe`/intrinsics variant, both rely on whatever
+autovectorization each compiler manages on its own (evidently not enough to
+match hand-written SIMD lanes here). That asymmetry is the whole point of
+this category: it's testing whether Mojo's SIMD *ergonomics* pay off against
+systems languages without an equivalently easy vectorization story, not
+measuring "which compiler is faster" in the abstract. C beats Rust by a
+modest margin (both scalar, comparable codegen quality) — that pair *is* a
+fair same-technique comparison.
+
 **The one category Mojo wins outright**, and it's the category Mojo was
 built for: every pixel is an independent, branch-light arithmetic loop, and
 Mojo's SIMD API lets the compiled binary process 4 pixels per lane with a
@@ -226,6 +264,24 @@ raw loop/memory-access speed *without* SIMD doing the work.
 | NumPy (vectorized slice) | 0.1419 s | 0.0016 s | 1.25x slower |
 | Python (pure, bytearray) | 2.1679 s | 0.0205 s | 19.1x slower |
 
+| Variant | Package / library | Technique |
+|---|---|---|
+| Mojo | none | Raw pointer (`alloc[UInt8]`/`p[unsafe_offset=i]`), **no bounds checking**, scalar marking loop |
+| C | none | `malloc` + raw byte array, **no bounds checking**, scalar marking loop — same shape as Mojo |
+| Rust | `std::vec::Vec<bool>` | `Vec<bool>` indexed via `is_prime[i]` — **safe Rust, bounds-checked on every read/write**, scalar marking loop, no `unsafe`/`get_unchecked` |
+| NumPy | `numpy` | Vectorized slice-assignment `is_prime[i*i::i] = False` — one bulk strided C-level write per outer iteration, not a marking loop at all |
+| Python | none | `bytearray`, scalar marking loop — same algorithm as Mojo/C/Rust, just interpreted |
+
+**Rust's variant here is not the same technique as Mojo/C's, and that
+likely explains the gap more than "Rust is slower":** Mojo and C both mark
+composites through an unchecked raw pointer/array; Rust's `Vec<bool>` pays a
+bounds check on every single marking write and was never given the
+`unsafe`/`get_unchecked` treatment Mojo's own rewrite applied. Rust landing
+between C/Mojo and NumPy is consistent with "safe-Rust bounds-checking tax,"
+not necessarily "the Rust compiler produces slower code than C's" — a fair
+`unsafe` Rust variant doesn't exist in this repo yet and would be a cheap,
+worthwhile follow-up before drawing a stronger conclusion about Rust here.
+
 **This category flipped completely during the writing of this repo, twice
 over, and Mojo's raw-pointer rewrite now lands within 2% of C.**
 
@@ -244,13 +300,14 @@ bounds-checked indexing on every store.
 the time — not just closing the gap, but taking the win over every other
 variant then measured. **This C reference confirms the ceiling that
 rewrite was closing in on**: C's own idiomatic sieve (`unsigned char*`
-array, plain scalar marking loop, no manual optimization) lands at 0.1269s
--- essentially the same number, 2% apart, both well ahead of Rust's
+array, plain scalar marking loop, no manual optimization) lands at 0.1135s
+-- essentially the same number, 5% apart, both well ahead of Rust's
 `Vec<bool>` and NumPy's vectorized bulk write. The original hypothesis is
 now doubly confirmed: the compiled-language raw loop was never
 structurally slower than NumPy's bulk memory write, and Mojo's
-bounds-check-free version is now indistinguishable from hand-written C's,
-within trial-to-trial noise.
+bounds-check-free version is now close to hand-written C's, within a small
+margin that plausibly reflects C's decades-longer compiler maturity more
+than anything else.
 
 **One rough edge worth flagging honestly**: getting to the raw-pointer
 version wasn't friction-free. `alloc[T](n)` still emits a deprecation
@@ -279,6 +336,31 @@ why the corpus is synthetic.
 | Rust (`HashMap<Vec<u8>,u64>`) | 0.4749 s | 0.0069 s | 2.5x slower |
 | Python (`collections.Counter`) | 1.7684 s | 0.0238 s | 9.3x slower |
 | Python (manual `dict`) | 1.9882 s | 0.0181 s | 10.4x slower |
+
+| Variant | Package / library | Technique |
+|---|---|---|
+| Mojo | none | **Hand-rolled** open-addressing hash table, FNV-1a hash, keyed by `(start,end)` byte-span into the loaded buffer — zero heap allocation per token |
+| C | none | **Structurally identical** to Mojo's — same FNV-1a, same 8192-slot open addressing (the C source's own header comment says so explicitly) |
+| Rust | `std::collections::HashMap<Vec<u8>, u64>` | General-purpose std `HashMap`, keyed by an **owned, per-token-allocated `Vec<u8>`** — not the byte-span technique |
+| Python `Counter` | `collections.Counter` (C-accelerated) | Python `dict` subclass, C-implemented |
+| Python `dict` | none | Manual `dict`, Python string keys |
+
+**This is the cleanest same-algorithm language comparison in the whole
+repo** (Mojo vs. C, byte-span hash table, byte-for-byte identical
+technique) **— and the one place Rust's gap has two identifiable,
+undisclosed-until-now causes, not just "Rust is slower":** (1) Rust's
+`HashMap` allocates an owned `Vec<u8>` per token, the exact anti-pattern
+Mojo's own pre-rewrite version lost on; (2) Rust's `std::collections::
+HashMap` default hasher is **SipHash**, deliberately designed to resist
+hash-flooding denial-of-service attacks on untrusted input, which is
+well-documented in the Rust ecosystem as measurably slower than a plain
+hash like FNV-1a for short keys — it's exactly why performance-sensitive
+Rust code commonly swaps in `FxHashMap`/`ahash` (neither used here, to keep
+every language variant to "standard library only, no extra packages"). A
+byte-span-keyed Rust `HashMap` with a non-cryptographic hasher would be a
+fair, cheap follow-up before concluding Rust-the-language is 2.5x behind C
+here — right now what's measured is "std HashMap with default settings,"
+not Rust's ceiling.
 
 **Same before/after story as category B — Mojo went from slowest of three
 to 2nd of five — but this is the one category where C pulls meaningfully
@@ -333,6 +415,14 @@ Timing includes the file read.
 | Python (pandas) | 1.8732 s | 0.0279 s | 6.4x slower |
 | Python (manual, `csv` module) | 3.2417 s | 0.0356 s | 11.1x slower |
 
+| Variant | Package / library | Technique |
+|---|---|---|
+| Mojo | none | Byte-span hash table, structurally identical to category C's — category field hashed/compared as a `(start,end)` span, never allocated as a `String`; `quantity`/`price_cents` parsed directly from raw bytes into integers |
+| C | none | **Structurally identical** to Mojo's (same technique, cross-referenced in the C source's own comment) |
+| Rust | `std::collections::HashMap<&str, i64>` | std `HashMap`, but keyed by a **borrowed `&str` slice this time — zero allocation**, unlike category C's Rust variant. Same SipHash default hasher as every other Rust variant in this repo |
+| pandas | `pandas` | Vectorized `groupby().sum()`, C/Cython-backed columnar computation, no explicit Python row loop |
+| Python manual | `csv` (stdlib) | `csv.reader` + manual `dict` aggregation, one row at a time |
+
 Mojo already applies the byte-span technique here (this benchmark shipped
 with it from the start, rather than needing a separate before/after
 rewrite like B and C) — the category field is hashed and compared as a
@@ -341,10 +431,16 @@ rewrite like B and C) — the category field is hashed and compared as a
 from raw bytes into integers, never materialized as Strings at all. That's
 enough to edge narrowly ahead of Rust's own from-scratch `HashMap<&str,
 i64>` (which borrows category slices from the input buffer directly --
-Rust's zero-cost equivalent of the byte-span trick). C, with the same
-technique and the same zero-allocation static-array construction described
-in category C above, is again the clear leader — 2.2-2.4x ahead of both
-Mojo and Rust, which land within 9% of each other.
+Rust's zero-cost equivalent of the byte-span trick, **and notably not the
+same technique its own word-frequency variant used in category C** — this
+Rust variant fixes the allocation handicap but still carries the SipHash
+one). C, with the same technique and the same zero-allocation static-array
+construction described in category C above, is again the clear leader —
+2.3-2.4x ahead of both Mojo and Rust, which land within 4% of each other.
+**Worth noting plainly: Rust's two hash-table variants in this repo (C and
+D) aren't equally handicapped relative to Mojo/C** — that inconsistency is
+between Rust's own implementations, not just between Rust and everyone
+else, and it's disclosed here rather than smoothed over.
 
 ### E — JSON parsing (real-world nested-structure processing)
 
@@ -364,23 +460,31 @@ amounts only, same reasoning as category D. Timing includes the file read.
 | Python (`json` stdlib) | 2.5887 s | 0.0195 s | 8.9x slower |
 | Python (manual, hand-rolled) | 19.7561 s | 1.9799 s | 68.1x slower |
 
-**The only category where Mojo isn't 1st or 2nd.** All three systems
-languages use the same approach — a targeted scanning parser (not a full
-generic JSON library) that walks the array of event objects, extracts
-`type` and `amount_cents`, and skips everything else (`id`, the nested
-`user` object, the `tags` array) via a generic `skip_value` that still
-respects real JSON nesting and string-escaping rules. `type` grouping uses
-the same byte-span hash table technique as categories B/C/D in all three
-languages. Despite the matched approach, Mojo trails Rust by roughly the
-same margin Rust trails C by — consistent with, though not conclusively
-proving, the same `List`-bounds-checking overhead identified in category
-C's hash-table slots showing up again here (the parser's `skip_value`
-recursion and the hash table both lean on `List`/`Span` operations in the
-hot path). Left as an open, disclosed finding rather than explained away
-with confidence this repo hasn't earned — a byte-span hash table
-implemented with raw pointers instead of `List`-backed slot arrays, tested
-across categories C, D, and E together, would be the natural next
-experiment to actually isolate this.
+| Variant | Package / library | Technique |
+|---|---|---|
+| Mojo | none | Hand-rolled scanning parser (`skip_value`/`skip_string`, respects real JSON nesting and string escaping) + byte-span hash table (same FNV-1a design as B/C/D) |
+| C | none | **Structurally identical** parser and hash table to Mojo's (the C source's own comment cross-references it) |
+| Rust | `std::collections::HashMap<&str, i64>` | Own hand-rolled scanning parser, similar shape to Mojo/C's, **but grouping uses std `HashMap` with a borrowed `&str` key — not the byte-span hash table**, same SipHash default hasher as every other Rust variant here |
+| Python `json` | `json` (stdlib, C-accelerated `_json`) | Full C-level parse into a native Python dict/list tree, then a Python-level loop re-walks that tree to aggregate |
+| Python manual | none | Hand-rolled recursive-descent parser that builds the **entire** Python object tree (every string/number/dict is a real allocated Python object) — unlike Mojo/C/Rust, which only extract 2 fields and skip the rest as unmaterialized spans |
+
+**Correction to how this category was previously described: it is *not*
+"all three systems languages use the byte-span hash table."** Only Mojo and
+C do — Rust's grouping step uses `std::collections::HashMap<&str, i64>`,
+the same choice it made in category D, not the byte-span technique. That
+matters for what this result actually shows: **the parser (not the hash
+table) is the more likely place to look for Mojo's gap.** If Mojo's
+slowness here were mainly hash-table overhead, Rust — using a *plain* std
+HashMap that isn't even byte-span-optimized — would be expected to lose
+that comparison too, not win it by ~2x over Mojo. Rust's zero-copy-key
+`HashMap` beating Mojo's purpose-built byte-span table is itself informative:
+it suggests category E's bottleneck sits in the **scanning/parsing loop
+itself** (function-call overhead per `skip_value`/`skip_string` call,
+`Tuple` returns, `Span` slicing) rather than in aggregation — the opposite
+conclusion from category C, where the hash table specifically was the
+identified cost. This is left as a hypothesis, not confirmed by profiling;
+it's the natural next thing to check before category E gets its own
+raw-pointer rewrite attempt.
 
 #### About the synthetic data (corpus, CSV, and JSON events)
 
