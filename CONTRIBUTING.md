@@ -84,25 +84,26 @@ trick rather than an exemption — see its header comment).
 
 ## Ideas that would be welcome
 
-- **A raw-pointer rewrite of the word-freq/csvagg hash tables' slot
-  arrays.** `ANALYSIS.md`'s category-C section found that C beats Mojo by
-  ~1.6x on the *identical* byte-span hash-table algorithm, and attributes
-  the gap to Mojo's `List[Bool]`/`List[UInt64]`/`List[Int]` slot arrays
-  still paying `List`'s bounds-check overhead per hash-table probe — the
-  same mechanism category B's raw-pointer sieve rewrite eliminated.
-  Applying that fix to categories C and D (both share the identical
-  hash-table pattern) would directly test that hypothesis. **Category E
-  was a different story, and it's now been profiled, not just guessed
-  at** (see `ANALYSIS.md`'s category-E section): `@always_inline` on the
-  scanning helpers was a real, confirmed ~24% win (verified via
-  `mojo build --emit asm` — zero calls to those functions remain), but
-  removing the hash table entirely only saved ~5-8% of total time, so the
-  scanning loop itself — not the hash table, and not un-inlined function
-  calls — is genuinely where the remaining 2.2x-behind-C gap lives. A
-  further win here isn't a small tuning fix; it needs a different
-  *algorithm* (structural pre-indexing / fewer branches per byte,
-  ultimately SIMD, the way simdjson does it) — open, not attempted in this
-  round.
+- **Profile category C/D's remaining Mojo-vs-C hash-table gap instead of
+  assuming slot-array bounds checks are the cause.** The raw-pointer slot
+  hypothesis has now been tested directly for category C: an otherwise
+  identical Mojo word-frequency variant changed all five fixed-capacity
+  `List` slot arrays to raw pointers and `unsafe_offset` indexing. Across
+  7-trial Linux runs it was only ~1.9% faster on x86_64 and ~1.5% slower on
+  arm64, with identical checksums — nowhere near enough to explain C's ~1.6x
+  lead. See `experiments/2026-09-03-wordfreq-mojo-rawslots.md`. Category D
+  still uses the same List-slot pattern, but this negative result means a
+  blind raw-pointer rewrite is no longer the strongest hypothesis; profile or
+  inspect generated code first. **Category E was a different story, and it's
+  now been profiled, not just guessed at** (see `ANALYSIS.md`'s category-E
+  section): `@always_inline` on the scanning helpers was a real, confirmed
+  ~24% win (verified via `mojo build --emit asm` — zero calls to those
+  functions remain), but removing the hash table entirely only saved ~5-8%
+  of total time, so the scanning loop itself — not the hash table, and not
+  un-inlined function calls — is genuinely where the remaining 2.2x-behind-C
+  gap lives. A further win here isn't a small tuning fix; it needs a different
+  *algorithm* (structural pre-indexing / fewer branches per byte, ultimately
+  SIMD, the way simdjson does it) — open, not attempted in this round.
 - **Give Rust's hash-table variants a fair non-cryptographic-hasher
   comparison.** Every Rust variant in this repo uses
   `std::collections::HashMap`'s default hasher, SipHash — deliberately
