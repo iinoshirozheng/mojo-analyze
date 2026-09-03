@@ -70,3 +70,31 @@ jobs:
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
           path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
+
+  wordfreq-mojo-rawslots:
+    # Focused category-C causal experiment: same parser/hash/probe/sort logic,
+    # changing only the five fixed-capacity hash-table slot arrays from List
+    # storage to raw pointers with unchecked indexing.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - run: mkdir -p dist
+      - run: pixi run mojo build benchmarks/wordfreq/wordfreq.mojo -o dist/wordfreq-mojo-list
+      - run: pixi run mojo build benchmarks/wordfreq/wordfreq_rawslots.mojo -o dist/wordfreq-mojo-rawslots
+      - run: pixi run prepare-corpus
+      - run: pixi run python scripts/bench_wordfreq_rawslots.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wordfreq-mojo-rawslots-${{ matrix.arch }}
+          path: results/experiments/wordfreq-mojo-rawslots-${{ matrix.arch }}.json
