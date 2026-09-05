@@ -1,203 +1,142 @@
+<div align="center">
+
 # 🔬 mojo-analyze
+
+**Rigorous, checksum-gated performance research on Mojo — with reproducible cross-language benchmarks and a daily ecosystem research log.**
+
+[Full Analysis](ANALYSIS.md) · [Experiments](experiments/) · [Mojo Ecosystem Radar](ecosystem/README.md) · [Contributing](CONTRIBUTING.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Mojo](https://img.shields.io/badge/mojo-%3E%3D1.0.0-fa4d24.svg)](https://mojolang.org)
 [![Managed by pixi](https://img.shields.io/badge/managed%20by-pixi-ffd24d.svg)](https://pixi.prefix.dev)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)](#requirements)
 
-A rigorous, reproducible Mojo-vs-Rust-vs-C-vs-Python benchmark suite — five
-tasks chosen to span five different compute profiles (SIMD-friendly,
-memory/branch-bound, real-world string/hash, real-world tabular
-aggregation, nested JSON parsing), every result gated on cross-language
-checksum agreement, every number honestly reported — including a headline
-that isn't flattering to the language this repo is actually about: **C
-wins four of the five categories**. Mojo wins the one built for it, and
-two categories tell a before/after story where the first honest Mojo
-attempt lost, the cause was found, and a disclosed rewrite closed the gap
-to a near-tie with C.
+</div>
 
-**[Read the full analysis →](ANALYSIS.md)**
+---
 
-## Table of Contents
+## Overview
 
-- [Results at a glance](#results-at-a-glance)
-- [What it does](#what-it-does)
-- [Requirements](#requirements)
-- [Quick start](#quick-start)
-- [How it works](#how-it-works)
-- [Contributing](#contributing)
-- [Credits](#credits)
-- [License](#license)
+`mojo-analyze` started as a fair Mojo-vs-Rust-vs-C-vs-Python benchmark suite and now also serves as an ongoing performance-research notebook for the Mojo ecosystem.
 
-## Results at a glance
+The rule is simple: **no fast answer is reported until it has first been shown to be the same answer**. Benchmark variants are checksum-gated, performance claims use repeated trials, and codegen or assembly is inspected when it is material to the explanation.
 
-![Who leads each category, and by how much](results/lieflat/chart_margin_overview.png)
+The core suite spans five different compute profiles: SIMD-friendly rendering, memory/branch-bound integer work, string/hash processing, tabular aggregation, and nested JSON parsing. The headline is intentionally not flattering to the language this repo studies: **C wins four of the five canonical categories; Mojo wins the SIMD-heavy Mandelbrot case.** The detailed methodology, root-cause analysis, caveats, and cross-platform findings live in [`ANALYSIS.md`](ANALYSIS.md).
 
-*(This chart and the rewrite-story one below predate C joining the
-comparison and category E — they still show the original 4-category,
-Mojo/Rust-only picture. The table and `chart_speedup.png` right after it
-are current; see [`ANALYSIS.md`](ANALYSIS.md#tldr) for the same caveat and
-the up-to-date standings.)*
+## Results at a Glance
 
 | Category | Task | Winner | Mojo's place |
 |---|---|---|---|
 | A — SIMD-friendly | Mandelbrot render | **Mojo** | 1st — 1.6x faster than C |
-| B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd, 1.05x behind — *previously lost to NumPy, see analysis* |
-| C — real-world string/hash | Word-frequency count | **C** | 2nd, 1.6x behind — *previously lost to `Counter`, see analysis* |
+| B — memory/branch-bound | Sieve of Eratosthenes | **C** | 2nd, 1.05x behind |
+| C — real-world string/hash | Word-frequency count | **C** | 2nd, 1.6x behind |
 | D — real-world tabular agg. | CSV group-by + sum | **C** | 2nd, 2.3x behind |
-| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd, 2.3x behind — *profiled, `@always_inline` closed ~24% of the gap, see analysis* |
+| E — nested JSON parsing | Group-by + sum over JSON | **C** | 3rd, 2.3x behind; `@always_inline` recovered ~24% |
 
-Mojo wins outright only where its SIMD API gets real work to do
-(Mandelbrot). Everywhere else, C's decades-mature compiler and total
-absence of runtime safety bookkeeping wins — usually by a modest margin,
-with Mojo typically the closer 2nd-place finisher, ahead of Rust in every
-category but one. Two categories (B, C) shipped a losing first Mojo
-attempt, a found root cause, and a disclosed rewrite that closed the gap
-to within 2% of C — full story, including *why*, in
-[`ANALYSIS.md`](ANALYSIS.md).
+![Same five categories, indexed to a common base](results/chart_speedup.png)
 
-![Three losing Mojo attempts, and the rewrite that fixed each one](results/lieflat/chart_rewrite_story.png)
+See [`ANALYSIS.md`](ANALYSIS.md) before citing these numbers as portable: the canonical published measurements were taken on Apple M4 Pro, with Linux CI used as a second reference point.
 
-![Same five categories, indexed to a common base — who wins each one](results/chart_speedup.png)
+## Ongoing Research
 
-Full methodology, per-category charts, root-cause analysis for every
-result (including a real FMA-rounding bug that hit *two independent
-compilers* the same way, a 4-way CPU-vs-GPU comparison, and a
-cross-platform finding — confirmed across 7 independent CI runs, not a
-one-off — that Mojo's Sieve ranking flips on Linux arm64 specifically) and
-threats to validity are all in [`ANALYSIS.md`](ANALYSIS.md).
+The repository is no longer limited to the five canonical benchmark categories. Small, independently verifiable investigations are recorded separately so experimental work does not silently rewrite the baseline suite.
 
-![Does Mojo's Sieve win hold across hardware?](results/lieflat/chart_crossplatform_flip.png)
+### Experiment log
 
-## What it does
+[`experiments/`](experiments/) contains focused research notes, one question per investigation. Recent work includes:
 
-- **A — Mandelbrot set rendering**: SIMD-vectorized escape-time computation
-  over an 800×600 grid — the case Mojo's SIMD API is built for. Also has a
-  standalone GPU (MAX/Metal) implementation, compared separately.
-- **B — Sieve of Eratosthenes**: primes up to 50,000,000 — deliberately
-  *not* SIMD-friendly, to test raw compiled-loop speed.
-- **C — Word-frequency counting**: tokenize and count 15,000,000 words
-  from a 62.4 MiB corpus — tests hash-table and string-allocation
-  maturity across languages.
-- **D — CSV group-by aggregation**: 10,000,000 order rows, group by
-  category and sum revenue — real-world tabular parsing.
-- **E — JSON parsing**: 3,000,000 nested event objects, 327 MiB — tests
-  real JSON structure traversal (objects, arrays, string escaping),
-  deliberately distinct from D's flat CSV.
+- Rust unsafe/indexing variants for the sieve workload;
+- a Mojo raw-slot word-frequency implementation that isolates hash-table/data-layout costs;
+- Linux cross-checks of the five-category benchmark suite;
+- a Rust FNV CSV-aggregation variant to separate hasher choice from language effects.
 
-Every task ships a Mojo, a Rust (`std`-only, `--release`), a C (`-O3`,
-std-only), a naive-Python, and an "optimized library" (NumPy / `Counter` /
-pandas / `json`) implementation, all built to a shared contract
-(`scripts/bench.py`'s docstring): each program times only its own core
-computation and prints a `CHECKSUM:` line, so the harness can refuse to
-report timings unless every variant of a benchmark agrees on the answer.
-**"Same language" doesn't always mean "same technique"** — every category
-in [`ANALYSIS.md`](ANALYSIS.md) has a package/technique table stating
-exactly what library (or "hand-rolled, no package") and what
-algorithm/data-structure each variant actually uses, and flags it plainly
-when a timing gap turns out to be about technique choice (a bounds-checked
-array, an allocating hash-map key, a cryptographic-strength default
-hasher) rather than the language or compiler itself.
+Experimental variants remain clearly separated from canonical benchmark implementations unless the evidence justifies changing the shipped baseline.
+
+### Mojo Ecosystem Radar
+
+[`ecosystem/README.md`](ecosystem/README.md) indexes daily ecosystem briefs under `ecosystem/YYYY-MM-DD.md`. These track relevant Mojo/Modular releases, active repositories, compiler/codegen work, GPU/system experiments, performance findings, and concrete candidates worth reproducing in this repository.
+
+The radar is an input to research, not a feed of popularity metrics: candidates are useful only when they can be reduced to a fair, reproducible experiment.
+
+## Benchmark Workloads
+
+- **A — Mandelbrot:** SIMD-vectorized escape-time computation over an 800×600 grid, plus a separate MAX/Metal GPU implementation.
+- **B — Sieve:** primes up to 50,000,000, deliberately not SIMD-friendly.
+- **C — Word frequency:** tokenize and count 15,000,000 words from a deterministic corpus.
+- **D — CSV aggregation:** 10,000,000 order rows grouped by category and summed.
+- **E — JSON parsing:** 3,000,000 nested event objects, testing real structure traversal rather than flat CSV parsing.
+
+Each canonical workload ships Mojo, Rust (`std`-only, release), C (`-O3`, std-only), naive Python, and an optimized Python-library comparison where appropriate. Technique differences are disclosed rather than hidden behind language labels.
 
 ## Requirements
 
-- [pixi](https://pixi.prefix.dev) — manages the Mojo + Python + NumPy +
-  pandas toolchain.
-- [Rust](https://rustup.rs) (`rustc`/`cargo`) — for the Rust reference
-  implementations.
-- A C compiler (`clang` or `gcc`) — for the C reference implementations.
-- macOS (Apple Silicon) or Linux (x86_64 / aarch64) — `pixi.toml` pins
-  `osx-arm64`, `linux-64`, and `linux-aarch64`. Windows isn't supported by
-  Mojo directly; use WSL2, which resolves as one of the Linux platforms.
-- A GPU is only needed for the optional `pixi run build-gpu` /
-  `pixi run bench-gpu` CPU-vs-GPU comparisons (Mandelbrot, Sieve,
-  word-frequency, CSV agg) — everything else runs CPU-only.
-- All published numbers in `ANALYSIS.md` were measured on an Apple M4 Pro
-  (macOS, arm64), with a Linux CI job providing a second reference point —
-  see its [Methodology](ANALYSIS.md#methodology) section before citing a
-  number as portable to other hardware.
+- [pixi](https://pixi.prefix.dev) for Mojo and the Python data/plotting toolchain.
+- Rust (`rustc` / `cargo`) for Rust references and research variants.
+- `clang` or `gcc` for C references.
+- macOS Apple Silicon or Linux x86-64/aarch64. Windows users should use WSL2 because Mojo itself does not provide a native Windows toolchain here.
+- A supported GPU only for optional `build-gpu` / `bench-gpu` comparisons.
 
-## Quick start
+## Quick Start
 
 ```bash
 git clone https://github.com/iinoshirozheng/mojo-analyze.git
 cd mojo-analyze
 pixi install
-pixi run build              # compiles the five CPU Mojo binaries -> dist/
-pixi run build-rust         # cargo build --release, copies binaries -> dist/
-pixi run build-c            # clang -O3, five binaries -> dist/
-pixi run prepare-corpus     # regenerates the synthetic word-frequency corpus (seeded, deterministic)
-pixi run prepare-data       # regenerates the synthetic CSV aggregation data (seeded, deterministic)
-pixi run prepare-events     # regenerates the synthetic JSON event data (seeded, deterministic)
-pixi run bench               # runs the full suite, writes results/results.json
-pixi run charts              # renders the charts in ANALYSIS.md from results.json
+
+pixi run build
+pixi run build-rust
+pixi run build-c
+pixi run prepare-corpus
+pixi run prepare-data
+pixi run prepare-events
+pixi run bench
+pixi run charts
 ```
 
-`pixi run bench` accepts `--trials N` (default 5), `--warmup N` (default 1),
-and `--only mandelbrot,sieve` to run a subset. The numbers and charts in
-[`ANALYSIS.md`](ANALYSIS.md) were produced with `--trials 7 --warmup 2`.
-Optional GPU comparisons: `pixi run build-gpu && pixi run bench-gpu`.
+`pixi run bench` supports `--trials N`, `--warmup N`, and `--only category,...`. Published analysis uses repeated trials; partial `--only` runs merge into the existing results set rather than deleting unrelated categories.
 
-## How it works
+Optional GPU comparisons:
 
-```
-benchmarks/
-  mandelbrot/   mandelbrot.mojo, mandelbrot_gpu.mojo, mandelbrot_python.py,
-                mandelbrot_numpy.py
-  sieve/        sieve.mojo, sieve_gpu.mojo, sieve_python.py, sieve_numpy.py
-  wordfreq/     wordfreq.mojo, wordfreq_gpu.mojo, wordfreq_python.py,
-                wordfreq_counter.py, prepare_corpus.py (gitignored data/)
-  csvagg/       csvagg.mojo, csvagg_gpu.mojo, csvagg_python.py,
-                csvagg_pandas.py, prepare_data.py (gitignored data/)
-  jsonparse/    jsonparse.mojo, jsonparse_python.py, jsonparse_stdlib.py,
-                prepare_events.py (gitignored data/)
-rust/
-  src/bin/      mandelbrot.rs, sieve.rs, wordfreq.rs, csvagg.rs, jsonparse.rs
-c/
-  mandelbrot.c, sieve.c, wordfreq.c, csvagg.c, jsonparse.c
-scripts/
-  bench.py      the harness: N warmup + N measured trials per variant,
-                parses each program's TIME_SECONDS/CHECKSUM stdout,
-                refuses to report timings on checksum disagreement,
-                writes results/results.json
-  bench_gpu.py  four CPU-vs-GPU mini-harnesses (checksum-gated for three
-                of four — see ANALYSIS.md for the one disclosed exception)
+```bash
+pixi run build-gpu
+pixi run bench-gpu
 ```
 
-Each benchmark binary/script is a standalone process taking CLI flags
-(`--width`/`--height`/`--max-iter` for Mandelbrot, `--limit` for the sieve,
-`--corpus` for word-frequency, `--csv` for CSV aggregation, `--json` for
-JSON parsing) and prints exactly two lines at the end of its output:
+## Methodology
 
-```
-TIME_SECONDS: 0.056339
-CHECKSUM: 42411634
-```
+Every benchmark program reports its computation time and a deterministic checksum. The harness:
 
-`scripts/bench.py` runs each variant several times, verifies every trial's
-checksum matches, verifies every variant's checksum for the same benchmark
-matches every other variant's, and only then computes mean/median/stdev.
-This is the whole methodology in one paragraph: **no fast answer is
-reported without first being proven to be the same answer**.
+1. performs warm-up runs;
+2. runs multiple measured trials;
+3. verifies checksum stability inside each implementation;
+4. verifies checksum agreement across implementations of the same workload;
+5. only then reports mean/median/stdev and regenerates result artifacts.
+
+When a surprising gap appears, the repository treats it as a research question rather than a conclusion. Examples in the analysis include bounds-checking effects, allocating hash-map keys, default hasher costs, an FMA-rounding correctness bug, platform-specific ranking changes, and JSON parser instruction density.
+
+## Repository Map
+
+```text
+benchmarks/      canonical Mojo/Python workloads and selected research variants
+rust/            Rust reference binaries and isolated comparison variants
+c/               C reference implementations
+scripts/         benchmark harnesses, data preparation, and chart generation
+results/         canonical result data and generated charts
+experiments/     dated, focused research notes
+ecosystem/       daily Mojo Ecosystem Radar briefs
+ANALYSIS.md      canonical performance analysis and methodology
+CONTRIBUTING.md  benchmark contracts, research rules, and open questions
+```
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) — the short version is: the
-checksum-agreement rule is non-negotiable, and if you change a number,
-update `ANALYSIS.md` in the same PR rather than leaving it stale next to
-new code.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). The checksum-agreement rule is non-negotiable. Performance changes should be backed by enough trials to support the claim, and changes to canonical results must keep [`ANALYSIS.md`](ANALYSIS.md) synchronized.
+
+A useful contribution answers one focused question. Do not add artificial variants or commits solely to create activity.
 
 ## Credits
 
-Built with the same benchmark-honesty methodology established while
-building [`fire-cube`](https://github.com/iinoshirozheng/fire-cube), a
-SIMD-accelerated Mojo terminal demo, and following the
-[mojo-syntax](https://mojolang.org) conventions of current Mojo 1.0. The
-narrative charts (rewrite story, cross-platform, margin overview) are built
-with [Lieflat Charts](https://github.com/larashero3-dotcom/lieflat-charts)
-— source in [`results/lieflat/charts.html`](results/lieflat/charts.html);
-the per-category, speedup, and GPU charts are plain matplotlib
-(`scripts/make_charts.py`).
+The benchmark-honesty methodology grew out of work on [`fire-cube`](https://github.com/iinoshirozheng/fire-cube). Narrative charts use [Lieflat Charts](https://github.com/larashero3-dotcom/lieflat-charts); the remaining result charts are generated with matplotlib from repository data.
 
 ## License
 
