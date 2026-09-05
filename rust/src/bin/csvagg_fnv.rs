@@ -4,17 +4,20 @@ use std::fs;
 use std::hash::{BuildHasherDefault, Hasher};
 use std::time::Instant;
 
-#[derive(Default)]
 struct Fnv1a64(u64);
+
+impl Default for Fnv1a64 {
+    fn default() -> Self {
+        Self(0xcbf29ce484222325u64)
+    }
+}
 
 impl Hasher for Fnv1a64 {
     fn write(&mut self, bytes: &[u8]) {
-        let mut hash = 0xcbf29ce484222325u64;
         for &b in bytes {
-            hash ^= b as u64;
-            hash = hash.wrapping_mul(0x100000001b3);
+            self.0 ^= b as u64;
+            self.0 = self.0.wrapping_mul(0x100000001b3);
         }
-        self.0 = hash;
     }
 
     fn finish(&self) -> u64 {
