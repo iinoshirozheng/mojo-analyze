@@ -24,6 +24,10 @@ name = "csvagg"
 path = "src/bin/csvagg.rs"
 
 [[bin]]
+name = "csvagg_fnv"
+path = "src/bin/csvagg_fnv.rs"
+
+[[bin]]
 name = "jsonparse"
 path = "src/bin/jsonparse.rs"
 
