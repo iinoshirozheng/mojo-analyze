@@ -70,3 +70,27 @@ jobs:
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
           path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
+
+  csvagg-rust-fnv:
+    # Focused causal experiment: category D already borrows &str keys, so the
+    # only intended variable is HashMap's default SipHash-based hasher versus
+    # a standard-library-only FNV-1a BuildHasher.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --manifest-path rust/Cargo.toml
+      - run: python benchmarks/csvagg/prepare_data.py
+      - run: python scripts/bench_csvagg_rust_fnv.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-rust-fnv-${{ matrix.arch }}
+          path: results/experiments/csvagg-rust-fnv-${{ matrix.arch }}.json
