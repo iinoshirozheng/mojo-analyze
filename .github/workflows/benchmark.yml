@@ -70,3 +70,25 @@ jobs:
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
           path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
+
+  wordfreq-rust-fnv:
+    # Focused fair-comparison experiment: preserve Category C's owned Vec<u8>
+    # keys and algorithm; change only Rust HashMap's default hasher to FNV-1a.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --manifest-path rust/Cargo.toml
+      - run: python scripts/bench_wordfreq_rust_fnv.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wordfreq-rust-fnv-${{ matrix.arch }}
+          path: results/experiments/wordfreq-rust-fnv-${{ matrix.arch }}.json
