@@ -20,6 +20,10 @@ name = "wordfreq"
 path = "src/bin/wordfreq.rs"
 
 [[bin]]
+name = "wordfreq_fnv"
+path = "src/bin/wordfreq_fnv.rs"
+
+[[bin]]
 name = "csvagg"
 path = "src/bin/csvagg.rs"
 
