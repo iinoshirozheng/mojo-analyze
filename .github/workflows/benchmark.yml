@@ -85,7 +85,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
       - uses: dtolnay/rust-toolchain@stable
+      - run: pixi run prepare-corpus
       - run: cargo build --release --manifest-path rust/Cargo.toml
       - run: python scripts/bench_wordfreq_rust_fnv.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
       - uses: actions/upload-artifact@v7
