@@ -70,3 +70,59 @@ jobs:
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
           path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
+
+  sieve-mojo-nightly-diff:
+    # One-off compiler differential prompted by the 2026-09-07 official nightly
+    # and the hlcf.if -> hlcf.elif lowering migration. The source and workload
+    # are identical; only the Mojo compiler/toolchain revision changes.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+
+      - name: Build stable and Sep-7 nightly Sieve
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/experiments
+          pixi run mojo build benchmarks/sieve/sieve.mojo -o dist/experiments/sieve-mojo-stable
+          pixi run mojo build --emit asm benchmarks/sieve/sieve.mojo -o dist/experiments/sieve-mojo-stable.s
+          pixi exec \
+            -c https://conda.modular.com/max-nightly \
+            -c conda-forge \
+            -s mojo=1.1.0.dev2026090705 \
+            -- mojo build benchmarks/sieve/sieve.mojo -o dist/experiments/sieve-mojo-nightly
+          pixi exec \
+            -c https://conda.modular.com/max-nightly \
+            -c conda-forge \
+            -s mojo=1.1.0.dev2026090705 \
+            -- mojo build --emit asm benchmarks/sieve/sieve.mojo -o dist/experiments/sieve-mojo-nightly.s
+
+      - name: Benchmark stable vs nightly
+        shell: bash
+        run: |
+          set -euo pipefail
+          STABLE_VERSION="$(pixi run mojo --version | head -n1)"
+          NIGHTLY_VERSION="$(pixi exec -c https://conda.modular.com/max-nightly -c conda-forge -s mojo=1.1.0.dev2026090705 -- mojo --version | head -n1)"
+          python scripts/bench_sieve_mojo_nightly.py \
+            --trials 7 --warmup 2 --arch "${{ matrix.arch }}" \
+            --stable-version "$STABLE_VERSION" \
+            --nightly-version "$NIGHTLY_VERSION"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sieve-mojo-nightly-20260907-${{ matrix.arch }}
+          path: |
+            results/experiments/sieve-mojo-nightly-20260907-${{ matrix.arch }}.json
+            dist/experiments/sieve-mojo-stable.s
+            dist/experiments/sieve-mojo-nightly.s
