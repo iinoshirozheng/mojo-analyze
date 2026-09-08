@@ -1,11 +1,20 @@
 # Mojo Ecosystem Radar
 
-Daily notes on technically meaningful developments in the Mojo ecosystem, with an emphasis on ideas that can turn into reproducible experiments for `mojo-analyze`.
+Broad discovery of Mojo repositories, original articles, research papers, application domains, and meaningful ecosystem changes. Useful sources need not map to today's benchmark experiment; discovery breadth and independently verified research depth are separate goals.
+
+## Editorial and discovery policy
+
+Before authoring a new brief, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). The full-report target is 20–30 distinct entries, normally including 12–16 repositories and 6–10 original reading selections, with official updates when meaningful. These are quality-controlled targets, not quotas to fill with fabricated news or repetitive links.
+
+Distinguish **recent developments**, **newly discovered projects**, and **older technical reading**. Aim for diverse owners and application domains rather than repeatedly checking only the watchlist below. Report actual coverage and search limitations. The integrated research phase still selects exactly one verifiable task, followed by one engineering-knowledge capture gate.
+
+The policy is repository documentation; changing it does not itself edit or verify the ChatGPT scheduler configuration.
 
 ## Daily briefs
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-09-08](2026-09-08.md) | Discovery expansion: 12 repo profiles + 9 reading selections; Gonzales rendering, Decimo arithmetic, audio DSP, raylib/FFmpeg/libclang, alignment, ML, units, testing and a browser-language prototype | carry chains; lazy JSON work contracts; ray/BVH primitives; FFT/mel stages; typed-unit abstraction; alignment or cardinality-sensitive joins |
 | [2026-09-07](2026-09-07.md) | Mojo 1.1/MAX 26.6 Sep-7 nightly; compiler `hlcf.if`→`hlcf.elif` consolidation; `mojo-http` quiet-machine/variance/drift benchmark guards | stable-vs-nightly branch differential; shared-runner estimator sensitivity; C/D hash-gap codegen profiling; fixed-width hash workload |
 | [2026-09-06](2026-09-06.md) | `mojo-http` ring handoff + lost-wake/order fixes; `wgpu-mojo` 0.2.1 packaging/ABI provenance; official-nightly status corrected by Sep-7 evidence | Rust Category C hasher cost; wake-credit correctness; benchmark provenance sidecar; WebGPU phase decomposition |
 | [2026-09-05](2026-09-05.md) | official tree quiet; `mojo-http` spawn workers + accept sharing; `mojo.httpx` benchmark architecture + async TLS lowering; `OfflinePoly.mojo` | controlled-host regression baselines; coroutine inline/no-inline probe; worker-distribution contract; fork-vs-spawn interop; geometry primitive |
@@ -14,6 +23,8 @@ Daily notes on technically meaningful developments in the Mojo ecosystem, with a
 | [2026-09-02](2026-09-02.md) | Mojo 1.0 + open compiler/toolchain; SIMD/GPU JSON, DuckDB GPU offload, Arrow/Marrow, LLM training, portability/FFI projects | structural JSON scan; GPU crossover curves; Mojo 1.x longitudinal history; KGEN/codegen tracing |
 
 ## Persistent watchlist
+
+This list preserves earlier research leads; it is not an exhaustive source list or a substitute for fresh discovery. Unchanged watchlist items should not dominate a new brief or count toward its source targets.
 
 - Mojo / Modular releases, compiler and standard-library changes
 - Mojo 1.1 nightly → stable transition and performance/codegen deltas
@@ -41,4 +52,4 @@ Daily notes on technically meaningful developments in the Mojo ecosystem, with a
 - FFI and interoperability projects that expose measurable boundary costs
 - projects that reveal CPU-vs-GPU crossover behavior rather than only peak GPU numbers
 
-The radar intentionally favors substantive technical activity over stars, novelty alone, or toy repositories. Findings should become benchmark candidates only after they can be reduced to a fair, checksum-verifiable experiment.
+The radar favors inspectable technical substance over stars or novelty alone. Early-stage prototypes and educational implementations are welcome when their distinctive idea and maturity are explained. Becoming a verified benchmark result requires a separate fair experiment and an appropriate correctness contract; appearing in the discovery collection does not.
