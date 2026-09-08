@@ -8,13 +8,13 @@ Before authoring a new brief, read and apply [RADAR_POLICY.md](RADAR_POLICY.md).
 
 Distinguish **recent developments**, **newly discovered projects**, and **older technical reading**. Aim for diverse owners and application domains rather than repeatedly checking only the watchlist below. Report actual coverage and search limitations. The integrated research phase still selects exactly one verifiable task, followed by one engineering-knowledge capture gate.
 
-The policy is repository documentation; changing it does not itself edit or verify the ChatGPT scheduler configuration.
+The scheduled Mojo workflow is expected to read this policy from `main` before its ecosystem phase so later policy revisions take effect without copying the full discovery rules into each daily brief.
 
 ## Daily briefs
 
 | Date | Highlights | Research candidates |
 |---|---|---|
-| [2026-09-08](2026-09-08.md) | Discovery expansion: 12 repo profiles + 9 reading selections; Gonzales rendering, Decimo arithmetic, audio DSP, raylib/FFmpeg/libclang, alignment, ML, units, testing and a browser-language prototype | carry chains; lazy JSON work contracts; ray/BVH primitives; FFT/mel stages; typed-unit abstraction; alignment or cardinality-sensitive joins |
+| [2026-09-08](2026-09-08.md) | 26-entry broad radar: 16 repo profiles + 10 readings; new evening discoveries include BlazeSeq bioinformatics, Larecs ECS, Linamo linear algebra and mojolearn cross-vendor GPU ML | shared-runner estimator sensitivity; Decimo carry chains; BlazeSeq ownership modes; Larecs archetype iteration; Linamo static/dynamic codegen |
 | [2026-09-07](2026-09-07.md) | Mojo 1.1/MAX 26.6 Sep-7 nightly; compiler `hlcf.if`→`hlcf.elif` consolidation; `mojo-http` quiet-machine/variance/drift benchmark guards | stable-vs-nightly branch differential; shared-runner estimator sensitivity; C/D hash-gap codegen profiling; fixed-width hash workload |
 | [2026-09-06](2026-09-06.md) | `mojo-http` ring handoff + lost-wake/order fixes; `wgpu-mojo` 0.2.1 packaging/ABI provenance; official-nightly status corrected by Sep-7 evidence | Rust Category C hasher cost; wake-credit correctness; benchmark provenance sidecar; WebGPU phase decomposition |
 | [2026-09-05](2026-09-05.md) | official tree quiet; `mojo-http` spawn workers + accept sharing; `mojo.httpx` benchmark architecture + async TLS lowering; `OfflinePoly.mojo` | controlled-host regression baselines; coroutine inline/no-inline probe; worker-distribution contract; fork-vs-spawn interop; geometry primitive |
@@ -51,5 +51,9 @@ This list preserves earlier research leads; it is not an exhaustive source list 
 - reproducible external benchmark suites worth independently replicating
 - FFI and interoperability projects that expose measurable boundary costs
 - projects that reveal CPU-vs-GPU crossover behavior rather than only peak GPU numbers
+- BlazeSeq and other bioinformatics pipelines exposing zero-copy versus owned/batched tradeoffs
+- Larecs and other ECS/game-runtime work exposing archetype/SIMD/scheduler costs
+- Linamo/NuMojo numerical-library design and codegen tradeoffs
+- mojolearn and other cross-vendor GPU projects with explicit numerical reproducibility profiles
 
 The radar favors inspectable technical substance over stars or novelty alone. Early-stage prototypes and educational implementations are welcome when their distinctive idea and maturity are explained. Becoming a verified benchmark result requires a separate fair experiment and an appropriate correctness contract; appearing in the discovery collection does not.
