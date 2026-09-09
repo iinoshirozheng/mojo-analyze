@@ -14,6 +14,7 @@ The scheduled Mojo workflow is expected to read this policy from `main` before i
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-09-09](2026-09-09.md) | 23-entry radar: Sep-9 Mojo 1.1/MAX 26.6 nightly, `hlcf.elif` canonicalizers, safer Array init idiom; 12 fresh repo profiles spanning CLI, terminal, numerics, GUI, notebooks, crypto and Kafka | Rust Sieve bounds-check codegen; `fill_with_unrolled` codegen; ArgMojo compile cost; MatMojo static/dynamic codegen; Thistle primitive replication |
 | [2026-09-08](2026-09-08.md) | 26-entry broad radar: 16 repo profiles + 10 readings; new evening discoveries include BlazeSeq bioinformatics, Larecs ECS, Linamo linear algebra and mojolearn cross-vendor GPU ML | shared-runner estimator sensitivity; Decimo carry chains; BlazeSeq ownership modes; Larecs archetype iteration; Linamo static/dynamic codegen |
 | [2026-09-07](2026-09-07.md) | Mojo 1.1/MAX 26.6 Sep-7 nightly; compiler `hlcf.if`→`hlcf.elif` consolidation; `mojo-http` quiet-machine/variance/drift benchmark guards | stable-vs-nightly branch differential; shared-runner estimator sensitivity; C/D hash-gap codegen profiling; fixed-width hash workload |
 | [2026-09-06](2026-09-06.md) | `mojo-http` ring handoff + lost-wake/order fixes; `wgpu-mojo` 0.2.1 packaging/ABI provenance; official-nightly status corrected by Sep-7 evidence | Rust Category C hasher cost; wake-credit correctness; benchmark provenance sidecar; WebGPU phase decomposition |
@@ -55,5 +56,9 @@ This list preserves earlier research leads; it is not an exhaustive source list 
 - Larecs and other ECS/game-runtime work exposing archetype/SIMD/scheduler costs
 - Linamo/NuMojo numerical-library design and codegen tradeoffs
 - mojolearn and other cross-vendor GPU projects with explicit numerical reproducibility profiles
+- ArgMojo and other Mojo-native developer tooling using compile-time validation/reflection
+- scientific/statistical packages (`MSL`, `StaMojo`, `MatMojo`) where compatibility and numerical-validation contracts are first-class
+- private/internal compiler-interface dependencies such as `mojokernel`'s LLDB integration
+- Thistle and other crypto projects where test vectors and side-channel/security boundaries matter more than headline throughput
 
 The radar favors inspectable technical substance over stars or novelty alone. Early-stage prototypes and educational implementations are welcome when their distinctive idea and maturity are explained. Becoming a verified benchmark result requires a separate fair experiment and an appropriate correctness contract; appearing in the discovery collection does not.
