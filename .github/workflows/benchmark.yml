@@ -48,7 +48,10 @@ jobs:
           path: results/results.json
 
   sieve-rust-unsafe:
-    # Existing focused timing experiment retained for reproducibility.
+    # Focused causal experiment: everything is identical to the canonical Rust
+    # sieve except the hot marking write uses get_unchecked_mut. Keep this in a
+    # separate job so its 7-trial result is available without waiting for the
+    # much slower full cross-language suite.
     strategy:
       fail-fast: false
       matrix:
@@ -67,57 +70,3 @@ jobs:
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
           path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
-
-  sieve-rust-codegen:
-    # One-run research probe for 2026-09-09: determine whether the safe and
-    # get_unchecked_mut marking loops still differ after rustc -O. The Sep-2
-    # timing experiment found no x86_64 win and only ~2.2% on arm64.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            arch: x86_64
-          - os: ubuntu-24.04-arm
-            arch: arm64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Emit optimized assembly and LLVM IR
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p results/experiments/rust-sieve-codegen-${{ matrix.arch }}
-          out=results/experiments/rust-sieve-codegen-${{ matrix.arch }}
-          rustc -C opt-level=3 -C codegen-units=1 --emit=asm -o "$out/safe.s" rust/src/bin/sieve.rs
-          rustc -C opt-level=3 -C codegen-units=1 --emit=asm -o "$out/unsafe.s" rust/src/bin/sieve_unsafe.rs
-          rustc -C opt-level=3 -C codegen-units=1 --emit=llvm-ir -o "$out/safe.ll" rust/src/bin/sieve.rs
-          rustc -C opt-level=3 -C codegen-units=1 --emit=llvm-ir -o "$out/unsafe.ll" rust/src/bin/sieve_unsafe.rs
-          rustc -C opt-level=3 -C codegen-units=1 -o "$out/safe" rust/src/bin/sieve.rs
-          rustc -C opt-level=3 -C codegen-units=1 -o "$out/unsafe" rust/src/bin/sieve_unsafe.rs
-          "$out/safe" --limit 50000000 > "$out/safe.out"
-          "$out/unsafe" --limit 50000000 > "$out/unsafe.out"
-          {
-            echo "arch=${{ matrix.arch }}"
-            rustc --version --verbose
-            echo "safe_checksum=$(grep '^CHECKSUM:' "$out/safe.out")"
-            echo "unsafe_checksum=$(grep '^CHECKSUM:' "$out/unsafe.out")"
-            echo "safe_asm_lines=$(wc -l < "$out/safe.s")"
-            echo "unsafe_asm_lines=$(wc -l < "$out/unsafe.s")"
-            echo "safe_panic_bounds_asm=$(grep -c 'panic_bounds_check' "$out/safe.s" || true)"
-            echo "unsafe_panic_bounds_asm=$(grep -c 'panic_bounds_check' "$out/unsafe.s" || true)"
-            echo "safe_panic_bounds_ir=$(grep -c 'panic_bounds_check' "$out/safe.ll" || true)"
-            echo "unsafe_panic_bounds_ir=$(grep -c 'panic_bounds_check' "$out/unsafe.ll" || true)"
-            sha256sum "$out/safe.s" "$out/unsafe.s" "$out/safe.ll" "$out/unsafe.ll"
-          } | tee "$out/summary.txt"
-          diff -u "$out/safe.ll" "$out/unsafe.ll" > "$out/llvm.diff" || true
-          diff -u "$out/safe.s" "$out/unsafe.s" > "$out/asm.diff" || true
-          echo '--- summary ---'
-          cat "$out/summary.txt"
-          echo '--- LLVM diff excerpt ---'
-          sed -n '1,220p' "$out/llvm.diff"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: rust-sieve-codegen-${{ matrix.arch }}
-          path: results/experiments/rust-sieve-codegen-${{ matrix.arch }}
