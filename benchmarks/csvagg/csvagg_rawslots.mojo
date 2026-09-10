@@ -1,3 +1,4 @@
+from std.memory.alloc import unsafe_alloc
 from std.sys import argv
 from std.time import perf_counter_ns
 
@@ -35,13 +36,19 @@ def main() raises:
     # Only the five fixed-capacity slot arrays move from List[...] storage to
     # raw pointers with unsafe_offset indexing, matching the focused Category-C
     # storage experiment rather than changing hash-table semantics.
-    var slot_used = alloc[UInt8](CAPACITY)
-    var slot_hash = alloc[UInt64](CAPACITY)
-    var slot_start = alloc[Int](CAPACITY)
-    var slot_end = alloc[Int](CAPACITY)
-    var slot_revenue = alloc[Int](CAPACITY)
+    var slot_used = unsafe_alloc[UInt8](CAPACITY)
+    var slot_hash = unsafe_alloc[UInt64](CAPACITY)
+    var slot_start = unsafe_alloc[Int](CAPACITY)
+    var slot_end = unsafe_alloc[Int](CAPACITY)
+    var slot_revenue = unsafe_alloc[Int](CAPACITY)
+    # Match the canonical List(repeating=0/False, count=CAPACITY) startup work
+    # instead of giving raw storage an initialization advantage.
     for s in range(CAPACITY):
         slot_used[unsafe_offset=s] = 0
+        slot_hash[unsafe_offset=s] = 0
+        slot_start[unsafe_offset=s] = 0
+        slot_end[unsafe_offset=s] = 0
+        slot_revenue[unsafe_offset=s] = 0
 
     var total_rows = 0
 
