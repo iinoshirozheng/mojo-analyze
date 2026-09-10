@@ -84,24 +84,28 @@ trick rather than an exemption — see its header comment).
 
 ## Ideas that would be welcome
 
-- **Profile category C/D's remaining Mojo-vs-C hash-table gap instead of
-  assuming slot-array bounds checks are the cause.** The raw-pointer slot
-  hypothesis has now been tested directly for category C: an otherwise
-  identical Mojo word-frequency variant changed all five fixed-capacity
-  `List` slot arrays to raw pointers and `unsafe_offset` indexing. Across
-  7-trial Linux runs it was only ~1.9% faster on x86_64 and ~1.5% slower on
-  arm64, with identical checksums — nowhere near enough to explain C's ~1.6x
-  lead. See `experiments/2026-09-03-wordfreq-mojo-rawslots.md`. Category D
-  still uses the same List-slot pattern, but this negative result means a
-  blind raw-pointer rewrite is no longer the strongest hypothesis; profile or
-  inspect generated code first. **Category E was a different story, and it's
-  now been profiled, not just guessed at** (see `ANALYSIS.md`'s category-E
-  section): `@always_inline` on the scanning helpers was a real, confirmed
-  ~24% win (verified via `mojo build --emit asm` — zero calls to those
-  functions remain), but removing the hash table entirely only saved ~5-8%
-  of total time, so the scanning loop itself — not the hash table, and not
-  un-inlined function calls — is genuinely where the remaining 2.2x-behind-C
-  gap lives. A further win here isn't a small tuning fix; it needs a different
+- **Profile category C/D's remaining Mojo-vs-C hash/parser/probe gap instead
+  of assuming slot-array storage is the cause.** The raw-pointer slot
+  hypothesis has now been tested directly in both real-world hash workloads.
+  Category C changed all five fixed-capacity `List` slot arrays to raw
+  pointers and measured only ~1.9% faster on Linux x86_64 and ~1.5% slower
+  on Linux arm64. Category D repeated the same isolated intervention with
+  equivalent initialization, unchanged parsing/FNV/probing/checksum, and
+  2 warmups + 7 measured trials: raw slots were ~4.2% faster by mean/median
+  on Linux x86_64 but ~0.6–0.9% slower on Linux arm64. Both experiments had
+  identical checksums, and neither effect is remotely large or portable
+  enough to explain the remaining Mojo-vs-C gap. See
+  `experiments/2026-09-03-wordfreq-mojo-rawslots.md` and
+  `experiments/2026-09-10-csvagg-mojo-rawslots.md`. The next useful step is
+  to profile or inspect the parser/hash/probe hot path before another storage
+  rewrite. **Category E was a different story, and it's now been profiled,
+  not just guessed at** (see `ANALYSIS.md`'s category-E section):
+  `@always_inline` on the scanning helpers was a real, confirmed ~24% win
+  (verified via `mojo build --emit asm` — zero calls to those functions
+  remain), but removing the hash table entirely only saved ~5-8% of total
+  time, so the scanning loop itself — not the hash table, and not un-inlined
+  function calls — is genuinely where the remaining 2.2x-behind-C gap lives.
+  A further win here isn't a small tuning fix; it needs a different
   *algorithm* (structural pre-indexing / fewer branches per byte, ultimately
   SIMD, the way simdjson does it) — open, not attempted in this round.
 - **Give Rust's hash-table variants a fair non-cryptographic-hasher
