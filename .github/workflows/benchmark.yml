@@ -70,3 +70,42 @@ jobs:
         with:
           name: sieve-rust-unsafe-${{ matrix.arch }}
           path: results/experiments/sieve-rust-unsafe-${{ matrix.arch }}.json
+
+  csvagg-mojo-rawslots:
+    # Focused Category-D falsification experiment: same parser, byte-span keys,
+    # FNV-1a, probing and checksum; only five fixed-capacity List slot arrays
+    # become raw pointers. Assembly is retained so a timing delta can be tied
+    # back to generated-code changes rather than inferred from source syntax.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - run: pixi run prepare-data
+      - name: Build List and raw-slot variants
+        run: |
+          mkdir -p dist/experiments results/experiments
+          pixi run mojo build benchmarks/csvagg/csvagg.mojo -o dist/experiments/csvagg-mojo-list
+          pixi run mojo build benchmarks/csvagg/csvagg_rawslots.mojo -o dist/experiments/csvagg-mojo-rawslots
+          pixi run mojo build --emit asm benchmarks/csvagg/csvagg.mojo -o results/experiments/csvagg-mojo-list-${{ matrix.arch }}.s
+          pixi run mojo build --emit asm benchmarks/csvagg/csvagg_rawslots.mojo -o results/experiments/csvagg-mojo-rawslots-${{ matrix.arch }}.s
+          cp results/experiments/csvagg-mojo-list-${{ matrix.arch }}.s dist/experiments/
+          cp results/experiments/csvagg-mojo-rawslots-${{ matrix.arch }}.s dist/experiments/
+      - name: Run 2 warmups + 7 trials with checksum gate
+        run: pixi run python scripts/bench_csvagg_mojo_rawslots.py --trials 7 --warmup 2 --arch ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-mojo-rawslots-${{ matrix.arch }}
+          path: |
+            results/experiments/csvagg-mojo-rawslots-${{ matrix.arch }}.json
+            results/experiments/csvagg-mojo-list-${{ matrix.arch }}.s
+            results/experiments/csvagg-mojo-rawslots-${{ matrix.arch }}.s
