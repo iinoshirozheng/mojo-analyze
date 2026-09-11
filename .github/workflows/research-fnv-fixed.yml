@@ -1,0 +1,39 @@
+name: Research FNV Fixed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/fnv_fixed/**'
+      - '.github/workflows/research-fnv-fixed.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Build focused variants
+        run: |
+          mkdir -p /tmp/fnv-fixed
+          pixi run mojo build experiments/fnv_fixed/fnv.mojo -o /tmp/fnv-fixed/fnv-mojo
+          clang -O3 experiments/fnv_fixed/fnv.c -o /tmp/fnv-fixed/fnv-c
+      - name: Run 2 warmups + 7 measured trials
+        run: python experiments/fnv_fixed/run_bench.py /tmp/fnv-fixed/fnv-mojo /tmp/fnv-fixed/fnv-c fnv-result-${{ matrix.arch }}.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fnv-fixed-${{ matrix.arch }}
+          path: fnv-result-${{ matrix.arch }}.json
