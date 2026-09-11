@@ -14,6 +14,7 @@ The scheduled Mojo workflow is expected to read this policy from `main` before i
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-09-11](2026-09-11.md) | 24-entry radar: Sep-11 Mojo/MAX nightly and 1.1 release-branch cut; 12 repo discoveries spanning Iceberg/storage, GPU ML, HPC, vision, compression, parsing, image processing and tooling | fixed-width FNV differential; CRC32 micro-workload; compile-time specialization cost; parity-oracle methodology; image-pipeline fusion |
 | [2026-09-10](2026-09-10.md) | 24-entry radar: Sep-10 Mojo/MAX nightly, comptime `nextafter`, iterable `Counter`; 12 repo profiles spanning regex, BLAS, Intel GPU, audio, 3DGS, FFI, benchmarking and GPU dataframes | Category D Mojo slot-storage differential; ExtraMojo SIMD bytes; mojo-regex comptime work placement; controlled join workload; BenchSuite estimator cross-check |
 | [2026-09-09](2026-09-09.md) | 24-entry radar: Sep-9 Mojo 1.1/MAX 26.6 nightly, `hlcf.elif` canonicalizers, safer Array init idiom; 12 fresh repo profiles spanning CLI, terminal, numerics, GUI, notebooks, crypto and Kafka | Rust Sieve bounds-check codegen; `fill_with_unrolled` codegen; ArgMojo compile cost; MatMojo static/dynamic codegen; Thistle primitive replication |
 | [2026-09-08](2026-09-08.md) | 26-entry broad radar: 16 repo profiles + 10 readings; new evening discoveries include BlazeSeq bioinformatics, Larecs ECS, Linamo linear algebra and mojolearn cross-vendor GPU ML | shared-runner estimator sensitivity; Decimo carry chains; BlazeSeq ownership modes; Larecs archetype iteration; Linamo static/dynamic codegen |
@@ -65,5 +66,8 @@ This list preserves earlier research leads; it is not an exhaustive source list 
 - MojoSplat / gsplat_mojo and other 3D rendering work exposing stage-level GPU and interop boundaries
 - mojo-bindgen and other FFI generators where ABI layout validation is a first-class correctness gate
 - MXFrame and other GPU query/dataframe projects exposing cardinality/skew and transfer/setup tradeoffs
+- Iceberg/data-lake bridges that preserve a mature implementation as a parity oracle during native Mojo migration
+- file-format/compression packages where checksum/spec fixtures give stronger correctness oracles than timing alone
+- compiler-throughput effects of runtime-vs-comptime target specialization in heavily instantiated GPU graphs
 
 The radar favors inspectable technical substance over stars or novelty alone. Early-stage prototypes and educational implementations are welcome when their distinctive idea and maturity are explained. Becoming a verified benchmark result requires a separate fair experiment and an appropriate correctness contract; appearing in the discovery collection does not.
