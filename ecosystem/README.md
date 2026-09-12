@@ -14,6 +14,7 @@ The scheduled Mojo workflow is expected to read this policy from `main` before i
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-09-12](2026-09-12.md) | 24-entry radar: Mojo 1.2/MAX 26.7 nightly; `@inline` migration; stride-correct advanced fusion; 12 repo discoveries spanning scientific ML, parsers, crypto, serverless, FFI, graphics and geometry | fixed-FNV cross-arch codegen; CSV SIMD tokenizer; 1.0→1.2 inline migration; skew-sensitive probing; stride-correctness fixture |
 | [2026-09-11](2026-09-11.md) | 24-entry radar: Sep-11 Mojo/MAX nightly and 1.1 release-branch cut; 12 repo discoveries spanning Iceberg/storage, GPU ML, HPC, vision, compression, parsing, image processing and tooling | fixed-width FNV differential; CRC32 micro-workload; compile-time specialization cost; parity-oracle methodology; image-pipeline fusion |
 | [2026-09-10](2026-09-10.md) | 24-entry radar: Sep-10 Mojo/MAX nightly, comptime `nextafter`, iterable `Counter`; 12 repo profiles spanning regex, BLAS, Intel GPU, audio, 3DGS, FFI, benchmarking and GPU dataframes | Category D Mojo slot-storage differential; ExtraMojo SIMD bytes; mojo-regex comptime work placement; controlled join workload; BenchSuite estimator cross-check |
 | [2026-09-09](2026-09-09.md) | 24-entry radar: Sep-9 Mojo 1.1/MAX 26.6 nightly, `hlcf.elif` canonicalizers, safer Array init idiom; 12 fresh repo profiles spanning CLI, terminal, numerics, GUI, notebooks, crypto and Kafka | Rust Sieve bounds-check codegen; `fill_with_unrolled` codegen; ArgMojo compile cost; MatMojo static/dynamic codegen; Thistle primitive replication |
@@ -31,13 +32,17 @@ This list preserves earlier research leads; it is not an exhaustive source list 
 
 - Mojo / Modular releases, compiler and standard-library changes
 - Mojo 1.1 nightly → stable transition and performance/codegen deltas
+- Mojo 1.2 / MAX 26.7 development line as an advisory provenance lane distinct from stable 1.0
 - exact nightly package revision as a first-class benchmark provenance field
 - `hlcf.if` → `hlcf.elif` compiler canonicalization and downstream branch/codegen effects
+- `@always_inline` / `@no_inline` → `@inline` migration and whether prior call-elimination findings survive
 - KGEN/compiler work affecting optimization, CPU SIMD, GPU lowering, ownership or memory safety
 - stable canonical toolchain + advisory latest-nightly drift testing
 - controlled-host performance regression baselines kept separate from noisy shared CI
 - benchmark artifact provenance tied to exact source/toolchain/parameters
 - machine-quietness, variance and comparator-drift checks as benchmark-validity dimensions
+- input distributions (uniform/Zipf/real trace) as explicit benchmark-contract dimensions when they affect load balance
+- non-unit-stride correctness fixtures before accepting tensor-fusion performance claims
 - async/coroutine lowering regressions surfaced by real networking libraries
 - MAX and cross-vendor accelerator developments, especially persistent-kernel and cross-block cooperation patterns
 - `mojo.httpx`, `mojo-http`, `flare` and other serious networking/FFI projects
@@ -69,5 +74,9 @@ This list preserves earlier research leads; it is not an exhaustive source list 
 - Iceberg/data-lake bridges that preserve a mature implementation as a parity oracle during native Mojo migration
 - file-format/compression packages where checksum/spec fixtures give stronger correctness oracles than timing alone
 - compiler-throughput effects of runtime-vs-comptime target specialization in heavily instantiated GPU graphs
+- Nabla-style high-level scientific runtimes with Mojo custom-kernel boundaries
+- parser projects with mature compatibility oracles (`mojo-dotenv`) and isolated SIMD scanning (`mojo-csv`)
+- libc/serverless packages where ABI, startup and deployment constraints matter more than hot-loop throughput
+- KGEN pass-level inspection before source rewrites when final assembly differs across architectures
 
 The radar favors inspectable technical substance over stars or novelty alone. Early-stage prototypes and educational implementations are welcome when their distinctive idea and maturity are explained. Becoming a verified benchmark result requires a separate fair experiment and an appropriate correctness contract; appearing in the discovery collection does not.
