@@ -35,8 +35,39 @@ jobs:
           pixi run mojo build experiments/fnv_fixed/fnv.mojo -o /tmp/fnv-fixed/fnv-mojo
           clang -O3 experiments/fnv_fixed/fnv.c -o /tmp/fnv-fixed/fnv-c
       - name: Run 2 warmups + 7 measured trials
-        run: python experiments/fnv_fixed/run_bench.py /tmp/fnv-fixed/fnv-mojo /tmp/fnv-fixed/fnv-c fnv-result-${{ matrix.arch }}.json
+        run: python experiments/fnv_fixed/run_bench.py /tmp/fnv-fixed/fnv-mojo /tmp/fnv-fixed/fnv-c /tmp/fnv-fixed/fnv-result-${{ matrix.arch }}.json
+      - name: Emit optimized assembly for the exact workload
+        run: |
+          pixi run mojo build --emit asm experiments/fnv_fixed/fnv.mojo -o /tmp/fnv-fixed/fnv-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/fnv_fixed/fnv.c -o /tmp/fnv-fixed/fnv-c-${{ matrix.arch }}.s
+          echo '=== assembly line counts ==='
+          wc -l /tmp/fnv-fixed/fnv-*-${{ matrix.arch }}.s
+          echo '=== multiply / branch opcode counts ==='
+          python - <<'PY'
+          import pathlib, re
+          root = pathlib.Path('/tmp/fnv-fixed')
+          arch = '${{ matrix.arch }}'
+          for impl in ('mojo', 'c'):
+              p = root / f'fnv-{impl}-{arch}.s'
+              text = p.read_text(errors='replace')
+              opcodes = {
+                  'imul': len(re.findall(r'\bimul[a-z]*\b', text)),
+                  'mul': len(re.findall(r'\bmul\b', text)),
+                  'xor': len(re.findall(r'\bxor[a-z]*\b', text)),
+                  'eor': len(re.findall(r'\beor\b', text)),
+                  'cmp': len(re.findall(r'\bcmp[a-z]*\b', text)),
+                  'conditional_branch': len(re.findall(r'\b(?:j(?:ne|nz|e|z|b|be|a|ae|l|le|g|ge)|b\.(?:ne|eq|lo|ls|hi|hs|lt|le|gt|ge))\b', text)),
+              }
+              print(impl, opcodes)
+          PY
+          echo '=== x86 FNV-prime references, if immediate ==='
+          grep -n -E '1099511628211|100000001[Bb]3' /tmp/fnv-fixed/fnv-*-${{ matrix.arch }}.s || true
+          echo '=== candidate hash arithmetic context ==='
+          grep -n -E -C 3 '\b(imul|mul|eor|xorq|xor)\b' /tmp/fnv-fixed/fnv-*-${{ matrix.arch }}.s | head -240 || true
       - uses: actions/upload-artifact@v7
         with:
           name: fnv-fixed-${{ matrix.arch }}
-          path: fnv-result-${{ matrix.arch }}.json
+          path: |
+            /tmp/fnv-fixed/fnv-result-${{ matrix.arch }}.json
+            /tmp/fnv-fixed/fnv-mojo-${{ matrix.arch }}.s
+            /tmp/fnv-fixed/fnv-c-${{ matrix.arch }}.s
