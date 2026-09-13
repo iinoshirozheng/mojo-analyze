@@ -41,13 +41,19 @@ def measure(path: str):
     }
 
 
-if len(sys.argv) != 4:
-    raise SystemExit("usage: run_bench.py <mojo-bin> <c-bin> <out-json>")
+if len(sys.argv) != 5:
+    raise SystemExit("usage: run_bench.py <mojo-loop-bin> <mojo-unrolled-bin> <c-bin> <out-json>")
 
-mojo = measure(sys.argv[1])
-c = measure(sys.argv[2])
-if mojo["checksum"] != c["checksum"]:
-    raise SystemExit(f"checksum mismatch: Mojo={mojo['checksum']} C={c['checksum']}")
+mojo_loop = measure(sys.argv[1])
+mojo_unrolled = measure(sys.argv[2])
+c = measure(sys.argv[3])
+checksums = {mojo_loop["checksum"], mojo_unrolled["checksum"], c["checksum"]}
+if len(checksums) != 1:
+    raise SystemExit(
+        "checksum mismatch: "
+        f"Mojo-loop={mojo_loop['checksum']} "
+        f"Mojo-unrolled={mojo_unrolled['checksum']} C={c['checksum']}"
+    )
 
 result = {
     "contract": {
@@ -57,13 +63,19 @@ result = {
         "warmups": 2,
         "measured_trials": 7,
         "hash": "FNV-1a 64-bit",
+        "intervention": "replace only Mojo's 32-byte counted hash loop with 32 explicit steps",
     },
-    "mojo": mojo,
+    "mojo_loop": mojo_loop,
+    "mojo_unrolled": mojo_unrolled,
     "c": c,
-    "mojo_over_c_mean_ratio": mojo["mean"] / c["mean"],
-    "mojo_over_c_median_ratio": mojo["median"] / c["median"],
+    "unrolled_over_loop_mean_ratio": mojo_unrolled["mean"] / mojo_loop["mean"],
+    "unrolled_over_loop_median_ratio": mojo_unrolled["median"] / mojo_loop["median"],
+    "loop_over_c_mean_ratio": mojo_loop["mean"] / c["mean"],
+    "unrolled_over_c_mean_ratio": mojo_unrolled["mean"] / c["mean"],
+    "loop_over_c_median_ratio": mojo_loop["median"] / c["median"],
+    "unrolled_over_c_median_ratio": mojo_unrolled["median"] / c["median"],
 }
 print(json.dumps(result, indent=2, sort_keys=True))
-with open(sys.argv[3], "w", encoding="utf-8") as f:
+with open(sys.argv[4], "w", encoding="utf-8") as f:
     json.dump(result, f, indent=2, sort_keys=True)
     f.write("\n")
