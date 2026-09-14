@@ -48,7 +48,8 @@ The repository is no longer limited to the five canonical benchmark categories. 
 - Rust unsafe/indexing variants for the sieve workload;
 - a Mojo raw-slot word-frequency implementation that isolates hash-table/data-layout costs;
 - Linux cross-checks of the five-category benchmark suite;
-- a Rust FNV CSV-aggregation variant to separate hasher choice from language effects.
+- a Rust FNV CSV-aggregation variant to separate hasher choice from language effects;
+- a [fixed-width FNV codegen experiment](experiments/2026-09-13-fixed-fnv-manual-unroll.md) where manual unrolling cut Mojo runtime by about 23% on Linux x86-64 and 26% on Linux arm64, reducing the isolated arm64 gap to C to under 0.5% while leaving the canonical suite unchanged.
 
 Experimental variants remain clearly separated from canonical benchmark implementations unless the evidence justifies changing the shipped baseline.
 
