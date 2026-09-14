@@ -1,0 +1,64 @@
+name: Research CSVAgg Hash Unroll
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_hash_unroll/**'
+      - '.github/workflows/research-csvagg-hash-unroll.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Record toolchains
+        run: |
+          pixi run mojo --version
+          clang --version | head -1
+          uname -a
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+      - name: Build focused variants
+        run: |
+          mkdir -p /tmp/csvagg-unroll
+          pixi run mojo build benchmarks/csvagg/csvagg.mojo -o /tmp/csvagg-unroll/csvagg-mojo-baseline
+          pixi run mojo build experiments/csvagg_hash_unroll/csvagg_unroll4.mojo -o /tmp/csvagg-unroll/csvagg-mojo-unroll4
+          clang -O3 c/csvagg.c -o /tmp/csvagg-unroll/csvagg-c
+      - name: Emit optimized assembly
+        run: |
+          pixi run mojo build --emit asm benchmarks/csvagg/csvagg.mojo -o /tmp/csvagg-unroll/csvagg-mojo-baseline-${{ matrix.arch }}.s
+          pixi run mojo build --emit asm experiments/csvagg_hash_unroll/csvagg_unroll4.mojo -o /tmp/csvagg-unroll/csvagg-mojo-unroll4-${{ matrix.arch }}.s
+          clang -O3 -S c/csvagg.c -o /tmp/csvagg-unroll/csvagg-c-${{ matrix.arch }}.s
+          echo '=== assembly line counts ==='
+          wc -l /tmp/csvagg-unroll/*-${{ matrix.arch }}.s
+          echo '=== arithmetic / branch context ==='
+          grep -n -E -C 2 '\b(imul|mul|eor|xor|cmp|jne|b\.)\b' /tmp/csvagg-unroll/csvagg-mojo-baseline-${{ matrix.arch }}.s | head -240 || true
+          echo '=== unroll4 arithmetic / branch context ==='
+          grep -n -E -C 2 '\b(imul|mul|eor|xor|cmp|jne|b\.)\b' /tmp/csvagg-unroll/csvagg-mojo-unroll4-${{ matrix.arch }}.s | head -320 || true
+      - name: Run 2 warmups + 7 measured trials
+        run: |
+          python experiments/csvagg_hash_unroll/run_bench.py \
+            --arch '${{ matrix.arch }}' \
+            --bin-dir /tmp/csvagg-unroll \
+            --out-dir /tmp/csvagg-unroll
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-hash-unroll-${{ matrix.arch }}
+          path: |
+            /tmp/csvagg-unroll/csvagg-hash-unroll-${{ matrix.arch }}.json
+            /tmp/csvagg-unroll/csvagg-mojo-baseline-${{ matrix.arch }}.s
+            /tmp/csvagg-unroll/csvagg-mojo-unroll4-${{ matrix.arch }}.s
+            /tmp/csvagg-unroll/csvagg-c-${{ matrix.arch }}.s
