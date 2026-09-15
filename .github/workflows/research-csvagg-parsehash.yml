@@ -1,0 +1,63 @@
+name: Research CSVAgg Parse+Hash Decomposition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_parsehash/**'
+      - '.github/workflows/research-csvagg-parsehash.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Record toolchains
+        run: |
+          pixi run mojo --version
+          clang --version | head -1
+          uname -a
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+      - name: Build focused and canonical variants
+        run: |
+          mkdir -p /tmp/csvagg-parsehash
+          pixi run mojo build experiments/csvagg_parsehash/csvagg_parsehash.mojo -o /tmp/csvagg-parsehash/parsehash-mojo
+          clang -O3 experiments/csvagg_parsehash/csvagg_parsehash.c -o /tmp/csvagg-parsehash/parsehash-c
+          pixi run mojo build benchmarks/csvagg/csvagg.mojo -o /tmp/csvagg-parsehash/full-mojo
+          clang -O3 c/csvagg.c -o /tmp/csvagg-parsehash/full-c
+      - name: Emit parse+hash assembly
+        run: |
+          pixi run mojo build --emit asm experiments/csvagg_parsehash/csvagg_parsehash.mojo -o /tmp/csvagg-parsehash/parsehash-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/csvagg_parsehash/csvagg_parsehash.c -o /tmp/csvagg-parsehash/parsehash-c-${{ matrix.arch }}.s
+          echo '=== assembly line counts ==='
+          wc -l /tmp/csvagg-parsehash/*-${{ matrix.arch }}.s
+          echo '=== Mojo branch/arithmetic context ==='
+          grep -n -E -C 2 '\b(imul|mul|eor|xor|cmp|jne|b\.|ldr|load)\b' /tmp/csvagg-parsehash/parsehash-mojo-${{ matrix.arch }}.s | head -320 || true
+          echo '=== C branch/arithmetic context ==='
+          grep -n -E -C 2 '\b(imul|mul|eor|xor|cmp|jne|b\.|ldr|load)\b' /tmp/csvagg-parsehash/parsehash-c-${{ matrix.arch }}.s | head -320 || true
+      - name: Run 2 warmups + 7 interleaved measured trials
+        run: |
+          python experiments/csvagg_parsehash/run_bench.py \
+            --arch '${{ matrix.arch }}' \
+            --bin-dir /tmp/csvagg-parsehash \
+            --out-dir /tmp/csvagg-parsehash
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-parsehash-${{ matrix.arch }}
+          path: |
+            /tmp/csvagg-parsehash/csvagg-parsehash-${{ matrix.arch }}.json
+            /tmp/csvagg-parsehash/parsehash-mojo-${{ matrix.arch }}.s
+            /tmp/csvagg-parsehash/parsehash-c-${{ matrix.arch }}.s
