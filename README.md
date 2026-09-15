@@ -49,7 +49,8 @@ The repository is no longer limited to the five canonical benchmark categories. 
 - a Mojo raw-slot word-frequency implementation that isolates hash-table/data-layout costs;
 - Linux cross-checks of the five-category benchmark suite;
 - a Rust FNV CSV-aggregation variant to separate hasher choice from language effects;
-- a [fixed-width FNV codegen experiment](experiments/2026-09-13-fixed-fnv-manual-unroll.md) where manual unrolling cut Mojo runtime by about 23% on Linux x86-64 and 26% on Linux arm64, reducing the isolated arm64 gap to C to under 0.5% while leaving the canonical suite unchanged.
+- a [fixed-width FNV codegen experiment](experiments/2026-09-13-fixed-fnv-manual-unroll.md) where manual unrolling cut Mojo runtime by about 23% on Linux x86-64 and 26% on Linux arm64, reducing the isolated arm64 gap to C to under 0.5% while leaving the canonical suite unchanged;
+- a [variable-length CSV FNV follow-up](experiments/2026-09-14-csvagg-variable-fnv-unroll.md) where 4× manual unrolling improved the real Category D Mojo workload by about 6.4% on shared Linux x86-64 runners but had no material arm64 effect, showing that the fixed-width microkernel gain does not generalize wholesale. Canonical results remain unchanged.
 
 Experimental variants remain clearly separated from canonical benchmark implementations unless the evidence justifies changing the shipped baseline.
 
