@@ -50,7 +50,8 @@ The repository is no longer limited to the five canonical benchmark categories. 
 - Linux cross-checks of the five-category benchmark suite;
 - a Rust FNV CSV-aggregation variant to separate hasher choice from language effects;
 - a [fixed-width FNV codegen experiment](experiments/2026-09-13-fixed-fnv-manual-unroll.md) where manual unrolling cut Mojo runtime by about 23% on Linux x86-64 and 26% on Linux arm64, reducing the isolated arm64 gap to C to under 0.5% while leaving the canonical suite unchanged;
-- a [variable-length CSV FNV follow-up](experiments/2026-09-14-csvagg-variable-fnv-unroll.md) where 4× manual unrolling improved the real Category D Mojo workload by about 6.4% on shared Linux x86-64 runners but had no material arm64 effect, showing that the fixed-width microkernel gain does not generalize wholesale. Canonical results remain unchanged.
+- a [variable-length CSV FNV follow-up](experiments/2026-09-14-csvagg-variable-fnv-unroll.md) where 4× manual unrolling improved the real Category D Mojo workload by about 6.4% on shared Linux x86-64 runners but had no material arm64 effect, showing that the fixed-width microkernel gain does not generalize wholesale;
+- a [Category D parse+hash decomposition](experiments/2026-09-15-csvagg-parsehash-decomposition.md) showing that, on shared Linux runners, the arm64 Mojo/C gap is already present before hash-table operations (~3.16× for the parse+hash prefix versus ~3.08× end-to-end), while x86-64 widens from ~1.71× in the prefix to ~2.05× end-to-end. That evidence points to architecture-dependent parser/scanner/hash and table-side costs rather than a single portable “hash-table bottleneck.” Canonical results remain unchanged.
 
 Experimental variants remain clearly separated from canonical benchmark implementations unless the evidence justifies changing the shipped baseline.
 
