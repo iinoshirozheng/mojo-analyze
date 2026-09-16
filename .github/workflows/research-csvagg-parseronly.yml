@@ -1,0 +1,63 @@
+name: Research CSVAgg Parser-Only Decomposition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_parseronly/**'
+      - '.github/workflows/research-csvagg-parseronly.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Record toolchains
+        run: |
+          pixi run mojo --version
+          clang --version | head -1
+          uname -a
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+      - name: Build parser-only and parse+hash pairs
+        run: |
+          mkdir -p /tmp/csvagg-parseronly
+          pixi run mojo build experiments/csvagg_parseronly/csvagg_parseronly.mojo -o /tmp/csvagg-parseronly/parser-mojo
+          clang -O3 experiments/csvagg_parseronly/csvagg_parseronly.c -o /tmp/csvagg-parseronly/parser-c
+          pixi run mojo build experiments/csvagg_parsehash/csvagg_parsehash.mojo -o /tmp/csvagg-parseronly/parsehash-mojo
+          clang -O3 experiments/csvagg_parsehash/csvagg_parsehash.c -o /tmp/csvagg-parseronly/parsehash-c
+      - name: Emit parser-only assembly
+        run: |
+          pixi run mojo build --emit asm experiments/csvagg_parseronly/csvagg_parseronly.mojo -o /tmp/csvagg-parseronly/parser-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/csvagg_parseronly/csvagg_parseronly.c -o /tmp/csvagg-parseronly/parser-c-${{ matrix.arch }}.s
+          echo '=== assembly line counts ==='
+          wc -l /tmp/csvagg-parseronly/*-${{ matrix.arch }}.s
+          echo '=== parser branch/arithmetic context (Mojo) ==='
+          grep -n -E -C 2 '\b(imul|mul|cmp|jne|b\.|ldr|load)\b' /tmp/csvagg-parseronly/parser-mojo-${{ matrix.arch }}.s | head -320 || true
+          echo '=== parser branch/arithmetic context (C) ==='
+          grep -n -E -C 2 '\b(imul|mul|cmp|jne|b\.|ldr|load)\b' /tmp/csvagg-parseronly/parser-c-${{ matrix.arch }}.s | head -320 || true
+      - name: Run 2 warmups + 7 interleaved measured trials
+        run: |
+          python experiments/csvagg_parseronly/run_bench.py \
+            --arch '${{ matrix.arch }}' \
+            --bin-dir /tmp/csvagg-parseronly \
+            --out-dir /tmp/csvagg-parseronly
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-parseronly-${{ matrix.arch }}
+          path: |
+            /tmp/csvagg-parseronly/csvagg-parseronly-${{ matrix.arch }}.json
+            /tmp/csvagg-parseronly/parser-mojo-${{ matrix.arch }}.s
+            /tmp/csvagg-parseronly/parser-c-${{ matrix.arch }}.s
