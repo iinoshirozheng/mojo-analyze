@@ -1,0 +1,67 @@
+name: Research CSVAgg Scanner-Only Decomposition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_scanonly/**'
+      - '.github/workflows/research-csvagg-scanonly.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Record toolchains
+        run: |
+          pixi run mojo --version
+          clang --version | head -1
+          uname -a
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+      - name: Build scanner-only and parser-only pairs
+        run: |
+          mkdir -p /tmp/csvagg-scanonly
+          pixi run mojo build experiments/csvagg_scanonly/csvagg_scanonly.mojo -o /tmp/csvagg-scanonly/scan-mojo
+          clang -O3 experiments/csvagg_scanonly/csvagg_scanonly.c -o /tmp/csvagg-scanonly/scan-c
+          pixi run mojo build experiments/csvagg_parseronly/csvagg_parseronly.mojo -o /tmp/csvagg-scanonly/parser-mojo
+          clang -O3 experiments/csvagg_parseronly/csvagg_parseronly.c -o /tmp/csvagg-scanonly/parser-c
+      - name: Emit scanner/parser assembly
+        run: |
+          pixi run mojo build --emit asm experiments/csvagg_scanonly/csvagg_scanonly.mojo -o /tmp/csvagg-scanonly/scan-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/csvagg_scanonly/csvagg_scanonly.c -o /tmp/csvagg-scanonly/scan-c-${{ matrix.arch }}.s
+          pixi run mojo build --emit asm experiments/csvagg_parseronly/csvagg_parseronly.mojo -o /tmp/csvagg-scanonly/parser-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/csvagg_parseronly/csvagg_parseronly.c -o /tmp/csvagg-scanonly/parser-c-${{ matrix.arch }}.s
+          echo '=== assembly line counts ==='
+          wc -l /tmp/csvagg-scanonly/*-${{ matrix.arch }}.s
+          echo '=== Mojo scanner arithmetic/branch context ==='
+          grep -n -E -C 2 '\b(imul|mul|madd|cmp|jne|b\.|ldr|load)\b' /tmp/csvagg-scanonly/scan-mojo-${{ matrix.arch }}.s | head -260 || true
+          echo '=== Mojo parser arithmetic/branch context ==='
+          grep -n -E -C 2 '\b(imul|mul|madd|cmp|jne|b\.|ldr|load)\b' /tmp/csvagg-scanonly/parser-mojo-${{ matrix.arch }}.s | head -320 || true
+      - name: Run 2 warmups + 7 interleaved measured trials
+        run: |
+          python experiments/csvagg_scanonly/run_bench.py \
+            --arch '${{ matrix.arch }}' \
+            --bin-dir /tmp/csvagg-scanonly \
+            --out-dir /tmp/csvagg-scanonly
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-scanonly-${{ matrix.arch }}
+          path: |
+            /tmp/csvagg-scanonly/csvagg-scanonly-${{ matrix.arch }}.json
+            /tmp/csvagg-scanonly/scan-mojo-${{ matrix.arch }}.s
+            /tmp/csvagg-scanonly/scan-c-${{ matrix.arch }}.s
+            /tmp/csvagg-scanonly/parser-mojo-${{ matrix.arch }}.s
+            /tmp/csvagg-scanonly/parser-c-${{ matrix.arch }}.s
