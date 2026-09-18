@@ -13,7 +13,6 @@ pixi install
 pixi run build            # compiles the five CPU Mojo binaries -> dist/
 pixi run build-rust       # cargo build --release, copies binaries -> dist/
 pixi run build-c          # clang -O3, five binaries -> dist/
-pixi run build-gpu        # compiles four GPU kernels (needs a GPU)
 pixi run prepare-corpus   # regenerates the synthetic word-frequency corpus
 pixi run prepare-data     # regenerates the synthetic CSV aggregation data
 pixi run prepare-events   # regenerates the synthetic JSON event data
@@ -84,30 +83,33 @@ trick rather than an exemption — see its header comment).
 
 ## Ideas that would be welcome
 
-- **Profile category C/D's remaining Mojo-vs-C hash/parser/probe gap instead
-  of assuming slot-array storage is the cause.** The raw-pointer slot
-  hypothesis has now been tested directly in both real-world hash workloads.
-  Category C changed all five fixed-capacity `List` slot arrays to raw
-  pointers and measured only ~1.9% faster on Linux x86_64 and ~1.5% slower
-  on Linux arm64. Category D repeated the same isolated intervention with
-  equivalent initialization, unchanged parsing/FNV/probing/checksum, and
-  2 warmups + 7 measured trials: raw slots were ~4.2% faster by mean/median
-  on Linux x86_64 but ~0.6–0.9% slower on Linux arm64. Both experiments had
-  identical checksums, and neither effect is remotely large or portable
-  enough to explain the remaining Mojo-vs-C gap. See
-  `experiments/2026-09-03-wordfreq-mojo-rawslots.md` and
-  `experiments/2026-09-10-csvagg-mojo-rawslots.md`. The next useful step is
-  to profile or inspect the parser/hash/probe hot path before another storage
-  rewrite. **Category E was a different story, and it's now been profiled,
-  not just guessed at** (see `ANALYSIS.md`'s category-E section):
-  `@always_inline` on the scanning helpers was a real, confirmed ~24% win
-  (verified via `mojo build --emit asm` — zero calls to those functions
-  remain), but removing the hash table entirely only saved ~5-8% of total
-  time, so the scanning loop itself — not the hash table, and not un-inlined
-  function calls — is genuinely where the remaining 2.2x-behind-C gap lives.
-  A further win here isn't a small tuning fix; it needs a different
-  *algorithm* (structural pre-indexing / fewer branches per byte, ultimately
-  SIMD, the way simdjson does it) — open, not attempted in this round.
+- **Inspect Category D's now-isolated in-memory scanner hot loop before more
+  parser/hash-table rewrites.** The decomposition series has progressively
+  excluded hash-table work, FNV hashing, numeric parsing, and finally file
+  ingestion. The Sep-18 same-binary timing-boundary experiment moved only
+  `open(...).read()` / `fread` outside the timer while keeping the exact same
+  scanner and checksum. On Linux x86_64 the Mojo/C mean ratio moved only from
+  about **1.694× to 1.613×**; on Linux arm64 it fell sharply from about
+  **4.134× to 2.350×**. File materialization is therefore a major arm64
+  contributor, but a substantial in-memory scanner/codegen gap remains even
+  when the bytes are already loaded. See
+  `experiments/2026-09-15-csvagg-parsehash-decomposition.md`,
+  `experiments/2026-09-16-csvagg-parseronly-decomposition.md`,
+  `experiments/2026-09-17-csvagg-scanonly-decomposition.md`, and
+  `experiments/2026-09-18-csvagg-ingestion-scan-boundary.md`. The next useful
+  step is to inspect the retained scanner assembly/IR and reduce byte access,
+  bounds/safety checks, or loop-control differences to one causal intervention
+  before coding another broad rewrite. **Category E was a different story,
+  and it's now been profiled, not just guessed at** (see `ANALYSIS.md`'s
+  category-E section): `@always_inline` on the scanning helpers was a real,
+  confirmed ~24% win (verified via `mojo build --emit asm` — zero calls to
+  those functions remain), but removing the hash table entirely only saved
+  ~5-8% of total time, so the scanning loop itself — not the hash table, and
+  not un-inlined function calls — is genuinely where the remaining
+  2.2x-behind-C gap lives. A further win here isn't a small tuning fix; it
+  needs a different *algorithm* (structural pre-indexing / fewer branches per
+  byte, ultimately SIMD, the way simdjson does it) — open, not attempted in
+  this round.
 - **Give Rust's hash-table variants a fair non-cryptographic-hasher
   comparison.** Every Rust variant in this repo uses
   `std::collections::HashMap`'s default hasher, SipHash — deliberately
