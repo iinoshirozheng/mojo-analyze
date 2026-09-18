@@ -1,0 +1,57 @@
+name: Research CSVAgg Ingestion vs Scan Boundary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_scan_scope/**'
+      - '.github/workflows/research-csvagg-scan-scope.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Record toolchains
+        run: |
+          pixi run mojo --version
+          clang --version | head -1
+          uname -a
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+      - name: Build same-binary timing-scope pair
+        run: |
+          mkdir -p /tmp/csvagg-scan-scope
+          pixi run mojo build experiments/csvagg_scan_scope/csvagg_scan_scope.mojo -o /tmp/csvagg-scan-scope/scan-scope-mojo
+          clang -O3 experiments/csvagg_scan_scope/csvagg_scan_scope.c -o /tmp/csvagg-scan-scope/scan-scope-c
+      - name: Emit optimized scanner assembly
+        run: |
+          pixi run mojo build --emit asm experiments/csvagg_scan_scope/csvagg_scan_scope.mojo -o /tmp/csvagg-scan-scope/scan-scope-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/csvagg_scan_scope/csvagg_scan_scope.c -o /tmp/csvagg-scan-scope/scan-scope-c-${{ matrix.arch }}.s
+          echo '=== assembly line counts ==='
+          wc -l /tmp/csvagg-scan-scope/*-${{ matrix.arch }}.s
+      - name: Run 2 warmups + 7 interleaved measured trials
+        run: |
+          python experiments/csvagg_scan_scope/run_bench.py \
+            --arch '${{ matrix.arch }}' \
+            --bin-dir /tmp/csvagg-scan-scope \
+            --out-dir /tmp/csvagg-scan-scope
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-scan-scope-${{ matrix.arch }}
+          path: |
+            /tmp/csvagg-scan-scope/csvagg-scan-scope-${{ matrix.arch }}.json
+            /tmp/csvagg-scan-scope/scan-scope-mojo-${{ matrix.arch }}.s
+            /tmp/csvagg-scan-scope/scan-scope-c-${{ matrix.arch }}.s
