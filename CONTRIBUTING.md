@@ -13,6 +13,7 @@ pixi install
 pixi run build            # compiles the five CPU Mojo binaries -> dist/
 pixi run build-rust       # cargo build --release, copies binaries -> dist/
 pixi run build-c          # clang -O3, five binaries -> dist/
+pixi run build-gpu        # compiles four GPU kernels (needs a GPU)
 pixi run prepare-corpus   # regenerates the synthetic word-frequency corpus
 pixi run prepare-data     # regenerates the synthetic CSV aggregation data
 pixi run prepare-events   # regenerates the synthetic JSON event data
