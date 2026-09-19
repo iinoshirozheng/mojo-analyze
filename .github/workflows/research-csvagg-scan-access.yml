@@ -1,0 +1,56 @@
+name: Research CSVAgg Span vs Pointer Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_scan_access/**'
+      - '.github/workflows/research-csvagg-scan-access.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+      - name: Record toolchains
+        run: |
+          pixi run mojo --version
+          clang --version | head -1
+          uname -a
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+      - name: Build scanner access variants
+        run: |
+          mkdir -p /tmp/csvagg-scan-access
+          pixi run mojo build experiments/csvagg_scan_access/csvagg_scan_access.mojo -o /tmp/csvagg-scan-access/scan-access-mojo
+          clang -O3 experiments/csvagg_scan_scope/csvagg_scan_scope.c -o /tmp/csvagg-scan-access/scan-scope-c
+      - name: Emit optimized assembly
+        run: |
+          pixi run mojo build --emit asm experiments/csvagg_scan_access/csvagg_scan_access.mojo -o /tmp/csvagg-scan-access/scan-access-mojo-${{ matrix.arch }}.s
+          clang -O3 -S experiments/csvagg_scan_scope/csvagg_scan_scope.c -o /tmp/csvagg-scan-access/scan-scope-c-${{ matrix.arch }}.s
+          wc -l /tmp/csvagg-scan-access/*-${{ matrix.arch }}.s
+      - name: Run checksum gate plus 2 warmups and 7 trials
+        run: |
+          python experiments/csvagg_scan_access/run_bench.py \
+            --arch '${{ matrix.arch }}' \
+            --bin-dir /tmp/csvagg-scan-access \
+            --out-dir /tmp/csvagg-scan-access
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-scan-access-${{ matrix.arch }}
+          path: |
+            /tmp/csvagg-scan-access/csvagg-scan-access-${{ matrix.arch }}.json
+            /tmp/csvagg-scan-access/scan-access-mojo-${{ matrix.arch }}.s
+            /tmp/csvagg-scan-access/scan-scope-c-${{ matrix.arch }}.s
