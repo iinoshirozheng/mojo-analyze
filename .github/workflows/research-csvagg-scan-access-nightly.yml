@@ -84,14 +84,15 @@ jobs:
             done
           fi
 
-      - name: Run checksum gate plus 2 warmups and 7 trials
+      - name: Run checksum gate plus 2 warmups and 15 trials
         run: |
           python experiments/csvagg_scan_access/run_nightly_bench.py \
             --arch '${{ matrix.arch }}' \
             --mojo11 /tmp/csvagg-scan-access-nightly/scan-access-mojo-11 \
             --mojo12 /tmp/csvagg-scan-access-nightly/scan-access-mojo-12 \
             --cbin /tmp/csvagg-scan-access-nightly/scan-scope-c \
-            --out-dir /tmp/csvagg-scan-access-nightly
+            --out-dir /tmp/csvagg-scan-access-nightly \
+            --trials 15
 
       - uses: actions/upload-artifact@v7
         with:
