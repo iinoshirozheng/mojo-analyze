@@ -1,0 +1,74 @@
+name: Research CSVAgg arm64 scanner CPU affinity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/csvagg_scan_access/run_affinity_bench.py'
+      - '.github/workflows/research-csvagg-scan-affinity.yml'
+  workflow_dispatch:
+
+jobs:
+  bench:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          environments: default
+
+      - name: Record host and toolchains
+        run: |
+          echo '=== Mojo 1.2 Sep-21 nightly exact temporary environment ==='
+          pixi exec -c https://conda.modular.com/max-nightly -c conda-forge \
+            --spec 'mojo=1.2.0.dev2026092105' mojo --version
+          clang --version | head -1
+          uname -a
+          lscpu
+          echo '=== runner affinity ==='
+          taskset -pc $$
+
+      - name: Prepare Category-D corpus
+        run: pixi run prepare-data
+
+      - name: Build one Mojo 1.2 binary and one C control
+        run: |
+          mkdir -p /tmp/csvagg-scan-affinity
+          pixi exec -c https://conda.modular.com/max-nightly -c conda-forge \
+            --spec 'mojo=1.2.0.dev2026092105' \
+            mojo build experiments/csvagg_scan_access/csvagg_scan_access.mojo \
+            -o /tmp/csvagg-scan-affinity/scan-access-mojo-12
+          clang -O3 experiments/csvagg_scan_scope/csvagg_scan_scope.c \
+            -o /tmp/csvagg-scan-affinity/scan-scope-c
+          sha256sum \
+            /tmp/csvagg-scan-affinity/scan-access-mojo-12 \
+            /tmp/csvagg-scan-affinity/scan-scope-c
+
+      - name: Emit optimized assembly for provenance
+        run: |
+          pixi exec -c https://conda.modular.com/max-nightly -c conda-forge \
+            --spec 'mojo=1.2.0.dev2026092105' \
+            mojo build --emit asm experiments/csvagg_scan_access/csvagg_scan_access.mojo \
+            -o /tmp/csvagg-scan-affinity/scan-access-mojo-12-arm64.s
+          clang -O3 -S experiments/csvagg_scan_scope/csvagg_scan_scope.c \
+            -o /tmp/csvagg-scan-affinity/scan-scope-c-arm64.s
+          wc -l /tmp/csvagg-scan-affinity/*-arm64.s
+          grep -c 'is out of bounds' /tmp/csvagg-scan-affinity/scan-access-mojo-12-arm64.s || true
+          grep -Eoc '[[:space:]]b\.hs[[:space:]]' /tmp/csvagg-scan-affinity/scan-access-mojo-12-arm64.s || true
+
+      - name: Run checksum gate plus 2 warmups and 20 affinity-interleaved trials
+        run: |
+          python experiments/csvagg_scan_access/run_affinity_bench.py \
+            --arch arm64 \
+            --mojo12 /tmp/csvagg-scan-affinity/scan-access-mojo-12 \
+            --cbin /tmp/csvagg-scan-affinity/scan-scope-c \
+            --out-dir /tmp/csvagg-scan-affinity \
+            --trials 20
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: csvagg-scan-affinity-arm64
+          path: |
+            /tmp/csvagg-scan-affinity/csvagg-scan-affinity-arm64.json
+            /tmp/csvagg-scan-affinity/scan-access-mojo-12-arm64.s
+            /tmp/csvagg-scan-affinity/scan-scope-c-arm64.s
