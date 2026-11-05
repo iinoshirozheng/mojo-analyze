@@ -1,6 +1,9 @@
 """Benchmark harness: runs each language variant of each benchmark N times,
 verifies correctness via checksum agreement, and reports timing statistics.
 
+Cross-variant checksum failure aborts the run before results.json is written.
+Timing summaries are published only after all selected categories validate.
+
 Usage:
     pixi run bench
     pixi run bench --trials 7 --only mandelbrot,sieve
@@ -11,7 +14,6 @@ import json
 import statistics
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -299,19 +301,23 @@ def main():
         for variant in bench["variants"]:
             label = variant["label"]
             print(f"  running {label}...", end=" ", flush=True)
-            t0 = time.time()
             times, checksum = run_variant(variant["cmd"], args.trials, args.warmup)
             bench_checksums[label] = checksum
             bench_results[label] = {"times": times, "checksum": checksum, **stats(times)}
-            print(f"mean={stats(times)['mean']:.4f}s  ({time.time() - t0:.1f}s wall)")
+            print(f"collected {len(times)} trials; checksum validation pending")
 
         distinct = set(bench_checksums.values())
         if len(distinct) != 1:
-            print(f"  !! CHECKSUM MISMATCH across variants: {bench_checksums}")
-            bench_results["_checksum_ok"] = False
-        else:
-            print(f"  checksum agreement: {distinct.pop()}")
-            bench_results["_checksum_ok"] = True
+            # Fail closed: a warning/JSON flag is not a failing CI exit status.
+            # Results are staged in memory until every selected category passes,
+            # so a failed full or partial run leaves the previous file untouched.
+            raise RuntimeError(
+                f"CHECKSUM MISMATCH for {bench['name']} across variants: "
+                f"{bench_checksums}\n"
+                "Refusing to publish timings or overwrite results/results.json."
+            )
+        print(f"  checksum agreement: {distinct.pop()}")
+        bench_results["_checksum_ok"] = True
 
         results[bench["name"]] = {
             "category": bench["category"],
