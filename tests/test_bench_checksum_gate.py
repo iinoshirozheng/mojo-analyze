@@ -154,5 +154,68 @@ class ChecksumPublicationGateTests(unittest.TestCase):
         self.assertIn("command failed (7)", result.stderr)
 
 
+    def test_nonfinite_time_rejected_before_publication(self):
+        for value in ("NaN", "Infinity", "-Infinity", "1e309", "-1e309"):
+            with self.subTest(time=value):
+                code = f"print('TIME_SECONDS: {value}'); print('CHECKSUM: 42')"
+                bad = variant("bad-time", code=code)
+                result, output = self.run_case([
+                    benchmark(variants=[variant("good"), bad]),
+                ])
+                self.assert_rejected(result, output)
+                self.assertIn("invalid TIME_SECONDS", result.stderr)
+
+    def test_nonpositive_time_rejected_before_publication(self):
+        for value in ("0", "-0.0", "-0.125"):
+            with self.subTest(time=value):
+                code = f"print('TIME_SECONDS: {value}'); print('CHECKSUM: 42')"
+                result, output = self.run_case([
+                    benchmark(variants=[variant("bad-time", code=code)]),
+                ])
+                self.assert_rejected(result, output)
+                self.assertIn("invalid TIME_SECONDS", result.stderr)
+
+    def test_bad_time_in_warmup_is_rejected(self):
+        code = (
+            "from pathlib import Path; p=Path('time_counter'); "
+            "n=int(p.read_text()) if p.exists() else 0; "
+            "p.write_text(str(n+1)); "
+            "print('TIME_SECONDS: ' + ('NaN' if n == 0 else '0.125')); "
+            "print('CHECKSUM: 42')"
+        )
+        result, output = self.run_case([
+            benchmark(variants=[variant("warmup-invalid", code=code)]),
+        ])
+        self.assert_rejected(result, output)
+        self.assertIn("invalid TIME_SECONDS", result.stderr)
+
+    def test_bad_time_after_valid_category_does_not_publish_any(self):
+        code = "print('TIME_SECONDS: inf'); print('CHECKSUM: 42')"
+        result, output = self.run_case([
+            benchmark(name="good-category"),
+            benchmark(name="bad-category", variants=[variant("bad-time", code=code)]),
+        ])
+        self.assert_rejected(result, output)
+        self.assertIn("invalid TIME_SECONDS", result.stderr)
+
+    def test_bad_time_without_old_file_does_not_create_one(self):
+        code = "print('TIME_SECONDS: nan'); print('CHECKSUM: 42')"
+        result, output = self.run_case([
+            benchmark(variants=[variant("bad-time", code=code)]),
+        ], existing=None)
+        self.assert_rejected(result, output, expected=None)
+
+    def test_small_positive_duration_still_publishes(self):
+        code = "print('TIME_SECONDS: 1e-9'); print('CHECKSUM: 42')"
+        result, output = self.run_case([
+            benchmark(variants=[variant("tiny-but-valid", code=code)]),
+        ])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(output, parse_constant=lambda token: self.fail(token))
+        row = data["fixture"]["variants"]["tiny-but-valid"]
+        self.assertEqual(row["times"], [1e-9, 1e-9])
+        self.assertEqual(row["mean"], 1e-9)
+        self.assertTrue(data["fixture"]["variants"]["_checksum_ok"])
+
 if __name__ == "__main__":
     unittest.main()

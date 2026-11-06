@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import json
+import math
 import statistics
 import subprocess
 import sys
@@ -251,6 +252,15 @@ def run_variant(cmd, trials, warmup):
             raise RuntimeError(
                 f"missing TIME_SECONDS/CHECKSUM in output of: {' '.join(cmd)}\n"
                 f"stdout:\n{result.stdout}"
+            )
+        # The stdout protocol is untrusted input. Python accepts nan/inf,
+        # and json.dumps permits NaN/Infinity by default; a nonpositive or
+        # nonfinite duration cannot support a valid benchmark comparison.
+        if not math.isfinite(t) or t <= 0:
+            raise RuntimeError(
+                f"invalid TIME_SECONDS {t!r} from: {' '.join(cmd)}\\n"
+                "Expected a finite, strictly positive elapsed time; "
+                "refusing to publish benchmark results."
             )
         checksums.add(c)
         if i >= warmup:
