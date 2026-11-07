@@ -291,6 +291,13 @@ def main():
     parser.add_argument("--only", type=str, default=None,
                          help="comma-separated benchmark names to run")
     args = parser.parse_args()
+    # Reject invalid trial protocols before launching children or touching results.
+    # Zero trials has no sample statistics; negative warmups silently change
+    # which iterations count as measurements.
+    if args.trials < 1:
+        parser.error("--trials must be at least 1")
+    if args.warmup < 0:
+        parser.error("--warmup must be nonnegative")
 
     only = set(args.only.split(",")) if args.only else None
     benchmarks = [b for b in BENCHMARKS if only is None or b["name"] in only]
