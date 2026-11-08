@@ -154,6 +154,28 @@ class ChecksumPublicationGateTests(unittest.TestCase):
         self.assertIn("command failed (7)", result.stderr)
 
 
+    def test_duplicate_protocol_records_rejected_before_publication(self):
+        # A permissive last-record-wins parser can accept a contradictory
+        # checksum or timing line even when the variant appears valid.
+        for field, first, second in (
+            ("TIME_SECONDS", "0.250", "0.125"),
+            ("TIME_SECONDS", "0.125", "0.125"),
+            ("CHECKSUM", "wrong", "42"),
+            ("CHECKSUM", "42", "42"),
+        ):
+            with self.subTest(field=field, first=first, second=second):
+                code = (
+                    f"print({field + ': ' + first!r}); "
+                    f"print({field + ': ' + second!r}); "
+                    + ("print('CHECKSUM: 42')" if field == "TIME_SECONDS"
+                       else "print('TIME_SECONDS: 0.125')")
+                )
+                result, output = self.run_case([
+                    benchmark(variants=[variant("duplicate", code=code)]),
+                ])
+                self.assert_rejected(result, output)
+                self.assertIn("duplicate " + field, result.stderr)
+
     def test_nonfinite_time_rejected_before_publication(self):
         for value in ("NaN", "Infinity", "-Infinity", "1e309", "-1e309"):
             with self.subTest(time=value):
