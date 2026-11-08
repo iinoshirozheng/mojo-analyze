@@ -10,6 +10,7 @@ Before each run, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). Distinguish 
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-11-08](2026-11-08.md) | 10 evidence-limited entries: eight owners across compiler, scientific/MAX, graphics, networking, numerical ML, CPU inference, date-time; all eight broad GitHub queries timed out; no unsupported novelty ratio | stdout protocol ambiguity; arm64 region CPU clock; Morrow date oracle; Mojmelo numerical parity |
 | [2026-11-07](2026-11-07.md) | 10 verified entries: Nov-07 Mojo 1.3/MAX 26.8 nightly pin; GPU puzzles, package catalog, LSP, skills, education and inference references; broad search timeouts disclosed | benchmark CLI preflight; stable 1.2 scanner; GPU launch decomposition; LSP parity |
 | [2026-11-06](2026-11-06.md) | 21 entries: Mojo 1.3/MAX 26.8 nightly; 12 fresh-profile repositories across eight owners; native Parquet/Arrow/Snappy, Fortran FFI, graphics, GPU SQL, image codecs, numerical proofs and eight technical readings | arm64 scanner CPU-clock; stable 1.2 differential; Parquet oracle; interval enclosure; timing-value validity |
 | [2026-11-05](2026-11-05.md) | 20 entries: stable Mojo 1.2/MAX 26.7; 12 repositories across 10 owners; structured async, exact algebra, robotics, rendering, firmware, FFT, mutation testing and 7 technical readings; no unaudited novelty percentage | checksum-gate fault injection; stable 1.2 scanner differential; certificate timing; FFT build/runtime separation; linear-resource ABI probes |
