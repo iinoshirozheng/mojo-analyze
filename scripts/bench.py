@@ -231,8 +231,12 @@ def parse_output(stdout):
     for line in stdout.splitlines():
         line = line.strip()
         if line.startswith("TIME_SECONDS:"):
+            if time_seconds is not None:
+                raise RuntimeError("duplicate TIME_SECONDS in benchmark stdout")
             time_seconds = float(line.split(":", 1)[1].strip())
         elif line.startswith("CHECKSUM:"):
+            if checksum is not None:
+                raise RuntimeError("duplicate CHECKSUM in benchmark stdout")
             checksum = line.split(":", 1)[1].strip()
     return time_seconds, checksum
 
