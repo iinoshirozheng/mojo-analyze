@@ -238,6 +238,8 @@ def parse_output(stdout):
             if checksum is not None:
                 raise RuntimeError("duplicate CHECKSUM in benchmark stdout")
             checksum = line.split(":", 1)[1].strip()
+            if not checksum:
+                raise RuntimeError("empty CHECKSUM in benchmark stdout")
     return time_seconds, checksum
 
 
