@@ -305,7 +305,22 @@ def main():
     if args.warmup < 0:
         parser.error("--warmup must be nonnegative")
 
-    only = set(args.only.split(",")) if args.only else None
+    # An explicit selection must resolve to real benchmark categories.  A
+    # typo or an empty token must not turn a requested run into a successful
+    # no-op that republishes the previous results as though tested.
+    only = None
+    if args.only is not None:
+        names = [name.strip() for name in args.only.split(",")]
+        available = {bench["name"] for bench in BENCHMARKS}
+        if not all(names):
+            parser.error("--only requires nonempty comma-separated benchmark names")
+        unknown = sorted(set(names) - available)
+        if unknown:
+            parser.error(
+                "unknown benchmark(s) in --only: " + ", ".join(unknown)
+                + "; available: " + ", ".join(sorted(available))
+            )
+        only = set(names)
     benchmarks = [b for b in BENCHMARKS if only is None or b["name"] in only]
 
     # A partial (--only) run must not wipe out other categories already in
