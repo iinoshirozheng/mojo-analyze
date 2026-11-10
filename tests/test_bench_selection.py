@@ -73,7 +73,7 @@ class SelectionGateTests(unittest.TestCase):
     def test_known_selection_still_runs_and_merges(self):
         class Completed:
             returncode = 0
-            stdout = "TIME_SECONDS: 0.125\\nCHECKSUM: abc123\\n"
+            stdout = "TIME_SECONDS: 0.125\nCHECKSUM: abc123\n"
             stderr = ""
 
         with patch.object(sys, "argv", ["bench.py", "--only", " sieve ", "--trials", "1", "--warmup", "0"]), \
