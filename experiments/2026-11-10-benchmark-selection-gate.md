@@ -10,7 +10,7 @@ Inspected `scripts/bench.py` on main after the radar. The previous code used `se
 Validate the complete explicit selection **before reading or writing results and before launching any child process**. Strip whitespace, reject empty tokens and unknown names with argparse error (exit 2), and only then build the selected list. Preserve valid selection and partial-result merging.
 
 Code commit: [53a78ef](https://github.com/iinoshirozheng/mojo-analyze/commit/53a78ef363c281a2b1a5de3f9569e33d7331db6e).
-Regression-test commit: [42f3429](https://github.com/iinoshirozheng/mojo-analyze/commit/42f3429be17223ee33875e7272228daec092697b).
+Regression-test commits: [initial fixtures](https://github.com/iinoshirozheng/mojo-analyze/commit/42f3429be17223ee33875e7272228daec092697b), [newline fixture correction](https://github.com/iinoshirozheng/mojo-analyze/commit/eba7d97bcb8d4064df9611fc85291b6f0199cf6c).
 Tests: `tests/test_bench_selection.py` covers unknown-only, mixed known/unknown, empty tokens, and a valid whitespace-trimmed selection with result merge. The existing workflow discovers `test_bench*.py`.
 
 ## Verification status and limitations
