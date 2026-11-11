@@ -12,6 +12,8 @@ Usage:
 import argparse
 import json
 import math
+import os
+import tempfile
 import statistics
 import subprocess
 import sys
@@ -290,6 +292,30 @@ def stats(times):
     }
 
 
+
+def publish_results_atomically(out_path, results):
+    """Serialize a validated snapshot to a sibling temp file, then replace it.
+
+    A failed serialization or replacement must not corrupt the previous
+    published snapshot. os.replace is atomic on the same filesystem.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=out_path.parent,
+            prefix=f".{out_path.name}.", suffix=".tmp", delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
+            json.dump(results, handle, indent=2, allow_nan=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, out_path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--trials", type=int, default=5)
@@ -363,8 +389,7 @@ def main():
             "variants": bench_results,
         }
 
-    out_path.parent.mkdir(exist_ok=True)
-    out_path.write_text(json.dumps(results, indent=2))
+    publish_results_atomically(out_path, results)
     print(f"\nWrote {out_path}")
 
     print("\n=== Summary (mean seconds, lower is better) ===")
