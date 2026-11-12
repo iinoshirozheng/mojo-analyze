@@ -393,7 +393,11 @@ def main():
     print(f"\nWrote {out_path}")
 
     print("\n=== Summary (mean seconds, lower is better) ===")
-    for name, data in results.items():
+    # A partial run preserves historical categories on disk, but must not
+    # present those stale categories as if measured in this invocation.
+    for bench in benchmarks:
+        name = bench["name"]
+        data = results[name]
         print(f"\n{name}:")
         base = None
         for label, v in data["variants"].items():
