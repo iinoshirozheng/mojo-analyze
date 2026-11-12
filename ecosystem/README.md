@@ -10,6 +10,7 @@ Before each run, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). Distinguish 
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-11-12](2026-11-12.md) | 15 evidence-limited entries: nine repo profiles across seven owners; Intel SPIR-V/Level Zero, quantum simulation, E57, ANN, DSP, graphics and six original readings; five broad searches timed out | arm64 scanner region CPU clocks; E57 oracle; ANN recall frontier; SVG pixel parity |
 | [2026-11-11](2026-11-11.md) | 6 evidence-limited entries: Nov-10 Mojo 1.3 nightly, omxconsole notebook/CLI update, omxcode UI integration, enum/recursive-data design readings; broad GitHub searches timed out | arm64 region CPU clock; atomic results publication; omxconsole CLI contract; enum parser codegen |
 | [2026-11-10](2026-11-10.md) | 8 evidence-limited entries: MojoDEC geometry, proptest shrinking, 36-library package matrix, RDNA3 benchmark methodology; six broad searches timed out; two independent owners | arm64 scanner region CPU clocks; fail-closed --only selection; DEC algebraic oracle; replay tests |
 | [2026-11-09](2026-11-09.md) | 8 evidence-limited technical entries: Faust→Mojo GPU audio DSP, RP2040/RP2350 bare metal, async, TypeId, compiler and language design; broad GitHub search timeouts disclosed | region-scoped arm64 CPU clocks; empty-checksum protocol gate; Faust SoA crossover; MMIO codegen |
