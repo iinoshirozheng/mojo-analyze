@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import os
+import re
 import tempfile
 import statistics
 import subprocess
@@ -227,6 +228,9 @@ BENCHMARKS = [
 ]
 
 
+_DECIMAL_TIME = re.compile(r"[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
+
+
 def parse_output(stdout):
     time_seconds = None
     checksum = None
@@ -235,7 +239,12 @@ def parse_output(stdout):
         if line.startswith("TIME_SECONDS:"):
             if time_seconds is not None:
                 raise RuntimeError("duplicate TIME_SECONDS in benchmark stdout")
-            time_seconds = float(line.split(":", 1)[1].strip())
+            token = line.split(":", 1)[1].strip()
+            # float() accepts Python-only digit separators (e.g. 1_0),
+            # which are not part of the portable benchmark wire format.
+            if not _DECIMAL_TIME.fullmatch(token):
+                raise RuntimeError(f"invalid TIME_SECONDS decimal token: {token!r}")
+            time_seconds = float(token)
         elif line.startswith("CHECKSUM:"):
             if checksum is not None:
                 raise RuntimeError("duplicate CHECKSUM in benchmark stdout")
