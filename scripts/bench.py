@@ -228,7 +228,7 @@ BENCHMARKS = [
 ]
 
 
-_DECIMAL_TIME = re.compile(r"[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
+_DECIMAL_TIME = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
 
 
 def parse_output(stdout):
