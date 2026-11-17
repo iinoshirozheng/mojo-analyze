@@ -32,7 +32,7 @@ class TimingTokenTests(unittest.TestCase):
                     )
 
     def test_non_decimal_tokens_rejected(self):
-        for token in ("nan", "inf", "0x1p-2", "1.0 trailing"):
+        for token in ("nan", "inf", "0x1p-2", "1.0 trailing", r"1\\x25"):
             with self.subTest(token=token):
                 with self.assertRaisesRegex(RuntimeError, "invalid TIME_SECONDS"):
                     bench.parse_output(
