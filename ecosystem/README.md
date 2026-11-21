@@ -10,6 +10,7 @@ Before each run, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). Distinguish 
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-11-21](2026-11-21.md) | Evidence-limited 3 identities: direct README inspection of bajo BVH/path-tracing and momanim video prototype; October 9 original grant-cohort technical reading; six broad GitHub searches timed out, novelty unaudited | arm64 scanner CPU clocks; bajo BVH correctness oracle; momanim frame/codec split |
 | [2026-11-20](2026-11-20.md) | 2 evidence-limited original compiler/type-system readings: custom MLIR pre-lowering hook and dependent-type limits; 5 broad GitHub searches timed out; no verified new repo profiles | native arm64 scanner CPU clocks; mock target pre-lowering; Vec length normalization |
 | [2026-11-19](2026-11-19.md) | 4 evidence-limited identities: PyroMojo native Python-library ports and correctness-first benchmarking, Nov-17 compiler-proof community talk, Nov-19 liquid-types proposal; five broad GitHub searches timed out; novelty unaudited | arm64 scanner CPU clocks; bitset word-parallel replication; MessagePack boundary oracle |
 | [2026-11-18](2026-11-18.md) | 4 evidence-limited sources: mojo-baro GPU/serving update, customs import-tool lead, package-management discussion and GPU benchmarking protocol; six broad GitHub searches timed out; novelty unaudited | arm64 scanner region CPU clocks; gfx1100 GEMM warmup/baseline protocol; import preflight fixtures |
