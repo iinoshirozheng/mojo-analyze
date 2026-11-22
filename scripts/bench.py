@@ -232,6 +232,18 @@ _DECIMAL_TIME = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0
 
 
 def parse_output(stdout):
+    # The published contract requires timing and checksum as the final two
+    # nonempty stdout lines, in that order. An earlier valid pair followed by
+    # an error/status message must not silently count as a successful trial.
+    nonempty = [line.strip() for line in stdout.splitlines() if line.strip()]
+    if any(line.startswith(("TIME_SECONDS:", "CHECKSUM:")) for line in nonempty):
+        if (len(nonempty) < 2
+                or not nonempty[-2].startswith("TIME_SECONDS:")
+                or not nonempty[-1].startswith("CHECKSUM:")):
+            raise RuntimeError(
+                "TIME_SECONDS and CHECKSUM must be the final two "
+                "nonempty stdout lines, in that order"
+            )
     time_seconds = None
     checksum = None
     for line in stdout.splitlines():
