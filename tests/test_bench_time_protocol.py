@@ -40,5 +40,43 @@ class TimingTokenTests(unittest.TestCase):
                     )
 
 
+class StdoutPositionTests(unittest.TestCase):
+    """Markers are authoritative only when they terminate stdout."""
+
+    def test_valid_markers_follow_diagnostics(self):
+        self.assertEqual(
+            bench.parse_output(
+                "preparing input\nTIME_SECONDS: 0.25\nCHECKSUM: abc123\n"
+            ), (0.25, "abc123")
+        )
+
+    def test_trailing_error_does_not_validate_stale_marker_pair(self):
+        # Before the positional check this was accepted as a successful run.
+        with self.assertRaisesRegex(RuntimeError, "final two"):
+            bench.parse_output(
+                "TIME_SECONDS: 0.25\nCHECKSUM: abc123\n"
+                "ERROR: post-run verification failed\n"
+            )
+
+    def test_wrong_order_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, "final two"):
+            bench.parse_output("CHECKSUM: abc123\nTIME_SECONDS: 0.25\n")
+
+    def test_interleaved_diagnostic_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, "final two"):
+            bench.parse_output(
+                "TIME_SECONDS: 0.25\nlog: later work\nCHECKSUM: abc123\n"
+            )
+
+    def test_duplicate_marker_still_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, "duplicate TIME_SECONDS"):
+            bench.parse_output(
+                "TIME_SECONDS: 0.2\nTIME_SECONDS: 0.25\nCHECKSUM: abc123\n"
+            )
+
+    def test_no_protocol_markers_still_report_missing(self):
+        self.assertEqual(bench.parse_output("not a benchmark\n"), (None, None))
+
+
 if __name__ == "__main__":
     unittest.main()
