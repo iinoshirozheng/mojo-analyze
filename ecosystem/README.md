@@ -10,6 +10,7 @@ Before each run, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). Distinguish 
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-11-22](2026-11-22.md) | 23 distinct identities after 14-brief identity audit: 16 repositories across 13 owners, 6 original technical readings, Nov-21 Mojo 1.3 nightly; graphics/physics, wasm64, storage/FFI, numerical, UI; four broad GitHub searches timed out; author claims not reproduced | arm64 checked-Span CPU clocks; ludens wasm64 correctness; Linamo NaN/singular oracle; HDF5 FFI roundtrip |
 | [2026-11-21](2026-11-21.md) | Evidence-limited 3 identities: direct README inspection of bajo BVH/path-tracing and momanim video prototype; October 9 original grant-cohort technical reading; six broad GitHub searches timed out, novelty unaudited | arm64 scanner CPU clocks; bajo BVH correctness oracle; momanim frame/codec split |
 | [2026-11-20](2026-11-20.md) | 2 evidence-limited original compiler/type-system readings: custom MLIR pre-lowering hook and dependent-type limits; 5 broad GitHub searches timed out; no verified new repo profiles | native arm64 scanner CPU clocks; mock target pre-lowering; Vec length normalization |
 | [2026-11-19](2026-11-19.md) | 4 evidence-limited identities: PyroMojo native Python-library ports and correctness-first benchmarking, Nov-17 compiler-proof community talk, Nov-19 liquid-types proposal; five broad GitHub searches timed out; novelty unaudited | arm64 scanner CPU clocks; bitset word-parallel replication; MessagePack boundary oracle |
