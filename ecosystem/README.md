@@ -10,6 +10,7 @@ Before each run, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). Distinguish 
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-11-26](2026-11-26.md) | 17 entries: 12 repositories across 11 owners (11 README, one diff), four readings, Nov-25 nightly; access contracts, Mojara/Mojolt, Avro, pthreads, NuMojo, monorepo migration; four broad searches timed out | arm64 scanner CPU clock; NuMojo special-value oracle; Avro projection; FFI timer ABI |
 | [2026-11-25](2026-11-25.md) | 20 entries: 13 README profiles across 13 owners, six technical readings, Nov-24 nightly; Mojoverse, profiling, exact algebra, serialization and crypto; four broad searches timed out; novelty not quantified | arm64 scanner CPU clocks; Professor calibration; SHA-256 padding; Parquet null oracle |
 | [2026-11-24](2026-11-24.md) | 20 entries: 12 repositories across 10 owners, 7 readings, Nov-23 Mojo 1.3 nightly; named-axis views, OpenUSD, Wayland/Vulkan, libclang, Snappy, HPC portability; four broad searches timed out | arm64 scanner CPU clocks; Snappy bounded decode; precompiled imports; tensor view oracle |
 | [2026-11-23](2026-11-23.md) | 22 audited distinct identities: 16 direct-README repositories across 16 owners and 9+ domains; MojoProof Nov-22 verification reports/#7735–7739, MMMAudio 1.1, mixed-radix FFT build failures, storage/FFI, MAX Module; five broad discovery searches timed out | arm64 scanner CPU-clock probe; MojoProof gcd/layout minimal oracle; Balsa validation; FFT build/runtime split |
