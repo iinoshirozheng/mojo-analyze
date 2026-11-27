@@ -10,6 +10,7 @@ Before each run, read and apply [RADAR_POLICY.md](RADAR_POLICY.md). Distinguish 
 
 | Date | Highlights | Research candidates |
 |---|---|---|
+| [2026-11-27](2026-11-27.md) | 19 entries: 13 README profiles across nine owners, five technical readings, Nov-26 nightly; stable guard spelling, nested-origin verification, Parquet/Arrow, FASTQ/compression, CLI, geometric algebra and mixed-language finance; four broad searches timed out | ARM64 region CPU clocks; FASTQ ownership oracle; CLI argument boundaries; geometric product |
 | [2026-11-26](2026-11-26.md) | 17 entries: 12 repositories across 11 owners (11 README, one diff), four readings, Nov-25 nightly; access contracts, Mojara/Mojolt, Avro, pthreads, NuMojo, monorepo migration; four broad searches timed out | arm64 scanner CPU clock; NuMojo special-value oracle; Avro projection; FFI timer ABI |
 | [2026-11-25](2026-11-25.md) | 20 entries: 13 README profiles across 13 owners, six technical readings, Nov-24 nightly; Mojoverse, profiling, exact algebra, serialization and crypto; four broad searches timed out; novelty not quantified | arm64 scanner CPU clocks; Professor calibration; SHA-256 padding; Parquet null oracle |
 | [2026-11-24](2026-11-24.md) | 20 entries: 12 repositories across 10 owners, 7 readings, Nov-23 Mojo 1.3 nightly; named-axis views, OpenUSD, Wayland/Vulkan, libclang, Snappy, HPC portability; four broad searches timed out | arm64 scanner CPU clocks; Snappy bounded decode; precompiled imports; tensor view oracle |
